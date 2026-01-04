@@ -1,29 +1,35 @@
 require("dotenv").config();
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
 
-const authRoutes = require('./routes/auth');
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+
+const authRoutes = require("./routes/auth"); // <-- MUST be correct
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ai-learning-quiz';
-const PORT = process.env.PORT || 3000;
+// TEST LOG (IMPORTANT)
+console.log("Auth routes loaded");
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-  });
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error(err));
+  console.log("✅ index.js loaded");
 
-app.use('/api/auth', authRoutes);
 
-app.get('/', (req, res) => res.json({ ok: true }));
+app.use("/api/auth", authRoutes);
+console.log("✅ auth routes mounted at /api/auth");
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+
+// Test route
+app.get("/", (req, res) => {
+  res.send("API is running");
+});
+
+app.listen(5000, () => {
+  console.log("Server listening on port 5000");
 });
