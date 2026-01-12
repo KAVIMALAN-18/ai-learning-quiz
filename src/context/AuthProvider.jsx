@@ -28,8 +28,10 @@ export default function AuthProvider({ children }) {
       localStorage.setItem("token", res.data.token);
       setToken(res.data.token);
       setUser(res.data.user);
+      return true;
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -48,14 +50,18 @@ export default function AuthProvider({ children }) {
       localStorage.setItem("token", res.data.token);
       setToken(res.data.token);
       setUser(res.data.user);
+      return true;
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
   const fetchProfile = async () => {
+    console.log("calainf");
+    
     try {
       const res = await axios.get(`${BASE_URL}/profile`);
       setUser(res.data);
@@ -73,7 +79,7 @@ export default function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, error, login, register, logout }}
+      value={{ user, token, loading, error, login, register, logout,fetchProfile }}
     >
       {children}
     </AuthContext.Provider>
