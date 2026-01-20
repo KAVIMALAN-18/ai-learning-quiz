@@ -2,26 +2,32 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { AuthContext } from "./AuthContext";
 
+const BASE_URL = "http://localhost:5000/api/auth";
+
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const BASE_URL = "http://localhost:5000/api/auth";
-
+  /* =========================
+     ✅ SET AXIOS HEADER ON LOAD
+     ========================= */
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       fetchProfile();
     } else {
-      delete axios.defaults.headers.common.Authorization;
+      delete axios.defaults.headers.common["Authorization"];
       setUser(null);
+      setLoading(false);
     }
   }, [token]);
 
+  /* =========================
+     LOGIN
+     ========================= */
   const login = async (email, password) => {
-    setLoading(true);
     setError(null);
     try {
       const res = await axios.post(`${BASE_URL}/login`, { email, password });
@@ -32,13 +38,13 @@ export default function AuthProvider({ children }) {
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
       return false;
-    } finally {
-      setLoading(false);
     }
   };
 
+  /* =========================
+     REGISTER
+     ========================= */
   const register = async (name, email, mobile, password) => {
-    setLoading(true);
     setError(null);
     try {
       const res = await axios.post(`${BASE_URL}/register`, {
@@ -54,32 +60,47 @@ export default function AuthProvider({ children }) {
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
       return false;
+    }
+  };
+
+  /* =========================
+     FETCH PROFILE (FIXED)
+     ========================= */
+  const fetchProfile = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/profile`);
+      setUser(res.data);
+    } catch (err) {
+      console.error("Profile fetch failed");
+      localStorage.removeItem("token");
+      setToken(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchProfile = async () => {
-    console.log("calainf");
-    
-    try {
-      const res = await axios.get(`${BASE_URL}/profile`);
-      setUser(res.data);
-    } catch {
-      console.error("Profile fetch failed");
-    }
-  };
-
+  /* =========================
+     LOGOUT
+     ========================= */
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common.Authorization;
+    delete axios.defaults.headers.common["Authorization"];
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, error, login, register, logout,fetchProfile }}
+      value={{
+        user,
+        token,
+        loading,
+        error,
+        login,
+        register,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
