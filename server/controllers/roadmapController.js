@@ -23,7 +23,7 @@ async function callGeminiRaw(prompt) {
       const client = new GoogleGenerativeAI(GEMINI_API_KEY);
       // Attempt to use the common pattern: getGenerativeModel -> generateContent
       if (typeof client.getGenerativeModel === "function") {
-        const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = client.getGenerativeModel({ model: "gemini-pro" });
         if (model && typeof model.generateContent === "function") {
           const result = await model.generateContent(prompt);
           // result may contain text in multiple shapes; pick the most likely

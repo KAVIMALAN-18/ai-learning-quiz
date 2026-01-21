@@ -215,6 +215,13 @@ router.get('/history', authMiddleware, async (req, res) => {
 // GET /api/quiz/:id — return quiz with questions (no correct answers)
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
+    if (!req.params.id || req.params.id === 'undefined' || req.params.id === 'null') {
+      return res.status(400).json({ message: 'Invalid Quiz ID' });
+    }
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid Quiz ID format' });
+    }
     const quiz = await Quiz.findById(req.params.id).populate('questions');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
 
