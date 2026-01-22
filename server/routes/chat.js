@@ -1,19 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const authMiddleware = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const ChatMessage = require('../models/ChatMessage');
 
+const { callGemini } = require('../utils/ai');
+
 // Helper to call Gemini for chat completions
 async function callGeminiChat({ topic, level, history, question }) {
-  const GEMINI_URL = process.env.GEMINI_API_URL;
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-
-  if (!GEMINI_URL || !GEMINI_KEY) {
-    throw new Error('Gemini API not configured');
-  }
-
   // Build a conversational prompt including recent history
   let prompt = `You are an AI Tutor for the topic "${topic}". The student level is ${level}.`;
   prompt += '\n\nPrevious conversation:';
@@ -23,23 +17,7 @@ async function callGeminiChat({ topic, level, history, question }) {
   prompt += `\nStudent: ${question}`;
   prompt += `\n\nProvide a clear, concise, and ${level === 'beginner' ? 'beginner-friendly, example-driven' : 'detailed'} answer. Use examples where appropriate.`;
 
-  const res = await axios.post(GEMINI_URL, { prompt }, {
-    headers: { Authorization: `Bearer ${GEMINI_KEY}`, 'Content-Type': 'application/json' },
-    timeout: 20000,
-  });
-
-  const data = res.data || {};
-  let text = '';
-  if (typeof data === 'string') text = data;
-  else if (data.output_text) text = data.output_text;
-  else if (data.text) text = data.text;
-  else if (data.choices && data.choices[0]) {
-    text = data.choices[0].message?.content || data.choices[0].text || JSON.stringify(data.choices[0]);
-  } else {
-    text = JSON.stringify(data);
-  }
-
-  return text;
+  return await callGemini(prompt);
 }
 
 // POST /api/chat/ask  { topic, question }

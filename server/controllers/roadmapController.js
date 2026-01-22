@@ -1,77 +1,19 @@
-const axios = require("axios");
-const { GoogleGenerativeAI } = (() => {
-  try {
-    return require("@google/generative-ai");
-  } catch (e) {
-    return {};
-  }
-})();
 const User = require("../models/User");
 const Roadmap = require("../models/Roadmap");
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = process.env.GEMINI_API_URL; // optional REST endpoint
+const { callGemini } = require("../utils/ai");
 
 function buildPrompt(topic, level) {
   return `Create a ${level}-friendly learning roadmap for "${topic}".\n\nReturn ONLY valid JSON in this format:\n{\n  "steps": [\n    { "title": "Step title", "description": "Short explanation" }\n  ]\n}\n`;
 }
 
 async function callGeminiRaw(prompt) {
-  // Try SDK first if available
   try {
-    if (GoogleGenerativeAI && typeof GoogleGenerativeAI === "function") {
-      const client = new GoogleGenerativeAI(GEMINI_API_KEY);
-      // Attempt to use the common pattern: getGenerativeModel -> generateContent
-      if (typeof client.getGenerativeModel === "function") {
-        const model = client.getGenerativeModel({ model: "gemini-pro" });
-        if (model && typeof model.generateContent === "function") {
-          const result = await model.generateContent(prompt);
-          // result may contain text in multiple shapes; pick the most likely
-          if (result?.output?.text) return result.output.text;
-          if (result?.response?.text) return result.response.text?.() || result.response.text;
-          if (typeof result === "string") return result;
-          return JSON.stringify(result);
-        }
-      }
-    }
+    return await callGemini(prompt);
   } catch (err) {
-    console.warn("Gemini SDK call failed, falling back to REST call:", err.message);
+    console.error("Gemini call failed in roadmap controller:", err.message);
+    return null;
   }
-
-  // Fallback: REST call to GEMINI_API_URL if configured
-  if (GEMINI_API_URL && GEMINI_API_KEY) {
-    try {
-      const resp = await axios.post(
-        GEMINI_API_URL,
-        { prompt },
-        {
-          headers: {
-            Authorization: `Bearer ${GEMINI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 30_000,
-        }
-      );
-
-      // Try common response shapes
-      if (resp?.data) {
-        if (typeof resp.data === "string") return resp.data;
-        if (resp.data.outputText) return resp.data.outputText;
-        if (resp.data.text) return resp.data.text;
-        if (Array.isArray(resp.data.choices) && resp.data.choices[0]?.text)
-          return resp.data.choices[0].text;
-        // Try nested fields
-        if (resp.data?.candidates && resp.data.candidates[0]?.content)
-          return resp.data.candidates[0].content;
-        return JSON.stringify(resp.data);
-      }
-    } catch (err) {
-      console.warn("Gemini REST call failed:", err.message);
-    }
-  }
-
-  // As last resort return null to indicate no AI result
-  return null;
 }
 
 function safeParseSteps(text) {

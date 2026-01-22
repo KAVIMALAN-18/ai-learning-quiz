@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 
 const authMiddleware = require('../middleware/authMiddleware');
 const Quiz = require('../models/Quiz');
@@ -8,27 +7,16 @@ const Question = require('../models/Question');
 const QuizAttempt = require('../models/QuizAttempt');
 const User = require('../models/User');
 
-// Helper: generate questions using Gemini (expects GEMINI_API_URL and GEMINI_API_KEY)
+const { callGemini } = require('../utils/ai');
+
+// Helper: generate questions using Gemini (expects GEMINI_API_KEY)
 async function generateQuestionsWithGemini({ topic, difficulty, count = 10, timeLimitPerQ }) {
-  const GEMINI_URL = process.env.GEMINI_API_URL;
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-
-  if (!GEMINI_URL || !GEMINI_KEY) {
-    throw new Error('Gemini API not configured');
-  }
-
   const prompt = `You are an expert question generator for technical quizzes.
 Generate ${count} multiple-choice questions for the topic "${topic}" at ${difficulty} difficulty.
 For each question return a JSON object with fields: question (string), options (array of strings), correctAnswer (index or array for multi-select), timeLimit (seconds, optional), marks (number).
 Return ONLY a JSON array of question objects.`;
 
-  const resp = await axios.post(
-    GEMINI_URL,
-    { prompt },
-    { headers: { Authorization: `Bearer ${GEMINI_KEY}`, 'Content-Type': 'application/json' } }
-  );
-
-  const text = resp.data?.text || JSON.stringify(resp.data || {});
+  const text = await callGemini(prompt);
   const idx = text.indexOf('[');
   if (idx === -1) throw new Error('Invalid response from Gemini');
 
