@@ -19,6 +19,14 @@ const QuizAttemptSchema = new mongoose.Schema({
   startedAt: { type: Date, default: Date.now },
   submittedAt: { type: Date },
   timeTaken: { type: Number },
+  // AI Insights
+  aiAnalysis: {
+    feedback: { type: String },
+    strengthsIdentified: { type: [String] },
+    weaknessesIdentified: { type: [String] },
+    suggestedTopics: { type: [String] },
+    skillImpact: { type: Map, of: Number }, // How this quiz changed mastery scores
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('QuizAttempt', QuizAttemptSchema);

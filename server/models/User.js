@@ -10,6 +10,15 @@ const UserSchema = new mongoose.Schema({
   customGoals: { type: [String], default: [] },
   currentLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'beginner' },
   onboardingCompleted: { type: Boolean, default: false },
+  // Personalized Learning Fields
+  mastery: {
+    type: Map,
+    of: Number,
+    default: {}
+  }, // Map of topic -> proficiency score (0-100)
+  strengths: { type: [String], default: [] },
+  weaknesses: { type: [String], default: [] },
+  lastActive: { type: Date, default: Date.now },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

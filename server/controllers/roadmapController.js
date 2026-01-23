@@ -3,10 +3,21 @@ const Roadmap = require("../models/Roadmap");
 
 const { callGemini } = require("../utils/ai");
 
+/**
+ * Builds a structured prompt for the AI to generate a roadmap.
+ * @param {string} topic - The learning subject.
+ * @param {string} level - User's proficiency level (beginner, intermediate, advanced).
+ * @returns {string} The formatted prompt.
+ */
 function buildPrompt(topic, level) {
   return `Create a ${level}-friendly learning roadmap for "${topic}".\n\nReturn ONLY valid JSON in this format:\n{\n  "steps": [\n    { "title": "Step title", "description": "Short explanation" }\n  ]\n}\n`;
 }
 
+/**
+ * Wrapper for the Gemini AI service call.
+ * @param {string} prompt - The prompt to send.
+ * @returns {Promise<string|null>} The AI's response text.
+ */
 async function callGeminiRaw(prompt) {
   try {
     return await callGemini(prompt);
@@ -16,10 +27,16 @@ async function callGeminiRaw(prompt) {
   }
 }
 
+/**
+ * Parses the AI's response into a valid array of roadmap steps.
+ * Includes fallback logic for non-JSON or poorly formatted AI outputs.
+ * @param {string} text - The raw text from the AI.
+ * @returns {Array|null} Array of steps or null if parsing fails.
+ */
 function safeParseSteps(text) {
   if (!text || typeof text !== "string") return null;
 
-  // Try to extract a JSON object from text
+  // Attempt 1: Extract JSON block
   const firstBrace = text.indexOf("{");
   const lastBrace = text.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -28,29 +45,29 @@ function safeParseSteps(text) {
       const parsed = JSON.parse(jsonText);
       if (Array.isArray(parsed.steps)) return parsed.steps;
     } catch (e) {
-      // fallthrough to other parsers
+      // JSON failed, proceed to fallback line parsing
     }
   }
 
-  // Fallback: try to parse lines like "1. Title - Description"
+  // Attempt 2: Fallback line parsing (e.g., "1. Title - Description")
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const steps = [];
   for (const line of lines) {
-    // match numbered list '1. Title - description' or '- Title: description'
-    const m1 = line.match(/^(?:\d+\.|[-*])\s*(.+?)(?:\s*[:-]\s*(.+))?$/);
-    if (m1) {
-      steps.push({ title: m1[1].trim(), description: (m1[2] || "").trim() });
+    // Match numbered list: '1. Title - description'
+    const matchNumbered = line.match(/^(?:\d+\.|[-*])\s*(.+?)(?:\s*[:-]\s*(.+))?$/);
+    if (matchNumbered) {
+      steps.push({ title: matchNumbered[1].trim(), description: (matchNumbered[2] || "").trim() });
       continue;
     }
 
-    // match 'Title - Description'
-    const m2 = line.match(/^(.+?)\s+[-–—]\s+(.+)$/);
-    if (m2) {
-      steps.push({ title: m2[1].trim(), description: m2[2].trim() });
+    // Match dash separator: 'Title - Description'
+    const matchDash = line.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+    if (matchDash) {
+      steps.push({ title: matchDash[1].trim(), description: matchDash[2].trim() });
       continue;
     }
 
-    // If short line, treat as title
+    // Attempt 3: If short line, treat as a simple title
     if (line.length < 80) {
       steps.push({ title: line, description: "" });
     }
@@ -58,6 +75,7 @@ function safeParseSteps(text) {
 
   return steps.length ? steps : null;
 }
+
 
 function fallbackRoadmap(topic, level) {
   const generic = [
