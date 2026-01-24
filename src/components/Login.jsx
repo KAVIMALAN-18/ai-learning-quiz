@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { useNavigate, Link } from "react-router-dom";
+import { Mail, Lock, LogIn, Compass } from "lucide-react";
+import Card from "./ui/Card";
+import Button from "./ui/Button";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,84 +18,102 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your account</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Decorative Orbs */}
+      <div className="absolute top-0 -left-20 w-80 h-80 bg-primary-100 rounded-full blur-3xl opacity-50" />
+      <div className="absolute bottom-0 -right-20 w-80 h-80 bg-secondary-100 rounded-full blur-3xl opacity-50" />
+
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-primary-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary-500/20">
+              <Compass className="text-white w-7 h-7" />
+            </div>
+            <span className="text-2xl font-bold tracking-tight gradient-text">AI Learning</span>
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Error Message */}
+        <Card className="shadow-2xl border-slate-200/60 !p-8">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
+            <p className="text-slate-500 mt-1">Sign in to continue your learning journey</p>
+          </div>
+
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
-              <p className="text-red-700 text-sm font-medium">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3 text-sm font-medium animate-slide-up">
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+              {error}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Email Address
               </label>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                required
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  required
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all outline-none"
+                />
+              </div>
             </div>
 
-            {/* Password Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Password
               </label>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                required
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              />
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  required
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all outline-none"
+                />
+              </div>
             </div>
 
-            {/* Submit Button */}
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-3 rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 duration-200"
+              fullWidth
+              className="py-3.5"
             >
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </div>
+              )}
+            </Button>
           </form>
 
-          {/* Divider */}
-          <div className="mt-6 flex items-center">
-            <div className="flex-1 border-t border-gray-300"></div>
-            <span className="px-3 text-gray-500 text-sm">or</span>
-            <div className="flex-1 border-t border-gray-300"></div>
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
+            <p className="text-slate-500 text-sm">
+              Don't have an account?{" "}
+              <Link to="/register" className="text-primary-600 font-bold hover:text-primary-700 transition-colors">
+                Create Account
+              </Link>
+            </p>
           </div>
+        </Card>
 
-          {/* Register Link */}
-          <p className="mt-6 text-center text-gray-600">
-            Don't have an account?{" "}
-            <Link to="/register" className="text-blue-600 font-semibold hover:text-blue-700 transition">
-              Create one
-            </Link>
-          </p>
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-gray-500 text-xs mt-6">
-          © 2024 AI Learning Quiz. All rights reserved.
+        <p className="text-center text-slate-400 text-xs mt-8">
+          &copy; 2026 AI Learning platform. Built for the future of education.
         </p>
       </div>
     </div>

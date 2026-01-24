@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../services/api.client";
 import { AuthContext } from "./AuthContext";
-
-const BASE_URL = "http://localhost:5000/api/auth";
 
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -11,14 +9,12 @@ export default function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   /* =========================
-     ✅ SET AXIOS HEADER ON LOAD
+     ✅ SYNC USER PROFILE ON LOAD
      ========================= */
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       fetchProfile();
     } else {
-      delete axios.defaults.headers.common["Authorization"];
       setUser(null);
       setLoading(false);
     }
@@ -30,7 +26,7 @@ export default function AuthProvider({ children }) {
   const login = async (email, password) => {
     setError(null);
     try {
-      const res = await axios.post(`${BASE_URL}/login`, { email, password });
+      const res = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", res.data.token);
       setToken(res.data.token);
       setUser(res.data.user);
@@ -47,7 +43,7 @@ export default function AuthProvider({ children }) {
   const register = async (name, email, mobile, password) => {
     setError(null);
     try {
-      const res = await axios.post(`${BASE_URL}/register`, {
+      const res = await api.post("/auth/register", {
         name,
         email,
         mobile,
@@ -64,11 +60,11 @@ export default function AuthProvider({ children }) {
   };
 
   /* =========================
-     FETCH PROFILE (FIXED)
+     FETCH PROFILE
      ========================= */
   const fetchProfile = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/profile`);
+      const res = await api.get("/auth/profile");
       setUser(res.data);
     } catch (err) {
       console.error("Profile fetch failed");
@@ -87,7 +83,6 @@ export default function AuthProvider({ children }) {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common["Authorization"];
   };
 
   return (

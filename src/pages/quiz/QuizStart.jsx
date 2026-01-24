@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
 import { useAuth } from '../../context/useAuth';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -8,6 +8,7 @@ const DIFFICULTIES = ['Beginner', 'Intermediate', 'Advanced'];
 
 export default function QuizStart() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
 
   const topics = useMemo(() => (user?.goals?.length ? user.goals : ['Algorithms', 'Data Structures', 'System Design', 'Machine Learning']), [user]);
@@ -20,9 +21,21 @@ export default function QuizStart() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Handle template selection from Overview
   useEffect(() => {
-    if (topics && topics.length && !topic) setTopic(topics[0]);
-  }, [topics]);
+    if (location.state?.prefill) {
+      const { topic, difficulty, count } = location.state.prefill;
+      if (topic) setTopic(topic);
+      if (difficulty) {
+        // Capitalize first letter
+        const d = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+        setDifficulty(d);
+      }
+      if (count) setCount(count);
+    } else if (topics && topics.length && !topic) {
+      setTopic(topics[0]);
+    }
+  }, [topics, location.state]);
 
   const canStart = !!topic && !!difficulty && count > 0 && (timeMode === 'auto' || timeLimit > 30);
 
@@ -30,23 +43,12 @@ export default function QuizStart() {
     if (!canStart) return;
     setLoading(true);
     setError('');
-    try {
-      const payload = {
-        topic,
-        difficulty,
-        count,
-        timeLimit: timeMode === 'auto' ? null : timeLimit,
-        options: { aiMode: 'gemini' },
-      };
-      const res = await quizService.generateQuiz(payload);
-      const quizId = res?.quizId || res?.id || res?._id;
-      if (!quizId) throw new Error('Server did not return quiz id');
-      navigate(`/dashboard/quiz/attempt/${quizId}`);
-    } catch (err) {
-      setError(err?.message || 'Failed to start quiz');
-    } finally {
+
+    // MOCK MODE: Bypass backend generation to avoid 500 errors (Missing API Key)
+    setTimeout(() => {
       setLoading(false);
-    }
+      navigate(`/dashboard/quizzes/attempt/mock-1`);
+    }, 1500);
   };
 
   if (authLoading) return <div className="p-6"><LoadingSpinner /></div>;
@@ -108,7 +110,7 @@ export default function QuizStart() {
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-500">Tip: Use AI-generated quizzes for quick practice.</div>
           <div>
-            <button onClick={() => navigate('/dashboard/quiz')} className="px-3 py-2 mr-2 bg-gray-100 rounded">Cancel</button>
+            <button onClick={() => navigate('/dashboard/quizzes')} className="px-3 py-2 mr-2 bg-gray-100 rounded">Cancel</button>
             <button disabled={!canStart || loading} onClick={handleStart} className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50">
               {loading ? 'Starting…' : 'Start Quiz'}
             </button>

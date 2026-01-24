@@ -1,23 +1,4 @@
-import axios from "axios";
-
-const API_BASE = "http://localhost:5000/api";
-
-/* =========================
-   Auth Header Helper
-   ========================= */
-const getAuthConfig = () => {
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    throw new Error("No auth token found");
-  }
-
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
+import api from "./api.client";
 
 /* =========================
    Dashboard Service
@@ -27,32 +8,25 @@ const dashboardService = {
 
   // GET roadmap by topic
   async getRoadmap(topic) {
-    const config = getAuthConfig();
-    const res = await axios.get(
-      `${API_BASE}/roadmap?topic=${encodeURIComponent(topic)}`,
-      config
+    const res = await api.get(
+      `/roadmap?topic=${encodeURIComponent(topic)}`
     );
     return res.data;
   },
 
   // REGENERATE roadmap
   async regenerateRoadmap(roadmapId) {
-    const config = getAuthConfig();
-    const res = await axios.post(
-      `${API_BASE}/roadmap/${roadmapId}/regenerate`,
-      {},
-      config
+    const res = await api.post(
+      `/roadmap/${roadmapId}/regenerate`
     );
     return res.data;
   },
 
   // TOGGLE roadmap step completion
   async toggleRoadmapStep(roadmapId, stepIndex, completed) {
-    const config = getAuthConfig();
-    const res = await axios.put(
-      `${API_BASE}/roadmap/${roadmapId}/step/${stepIndex}`,
-      { completed },
-      config
+    const res = await api.put(
+      `/roadmap/${roadmapId}/step/${stepIndex}`,
+      { completed }
     );
     return res.data;
   },
@@ -60,21 +34,17 @@ const dashboardService = {
   /* -------- CHAT -------- */
 
   async getChatMessages(topic) {
-    const config = getAuthConfig();
-    const res = await axios.get(
-      `${API_BASE}/chat/messages?topic=${encodeURIComponent(topic)}`,
-      config
+    const res = await api.get(
+      `/chat/messages?topic=${encodeURIComponent(topic)}`
     );
     return res.data;
   },
 
   // POST ask chat (AI Tutor)
   async askChat(topic, question) {
-    const config = getAuthConfig();
-    const res = await axios.post(
-      `${API_BASE}/chat/ask`,
-      { topic, question },
-      config
+    const res = await api.post(
+      "/chat/ask",
+      { topic, question }
     );
     return res.data;
   },

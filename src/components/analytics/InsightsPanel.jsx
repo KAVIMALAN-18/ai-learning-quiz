@@ -1,18 +1,26 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import Card from '../ui/Card';
+import { TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
 import Button from '../ui/Button';
 
-function List({ title, items }) {
+function List({ title, items, variant = 'strength' }) {
+  const isStrength = variant === 'strength';
+  const Icon = isStrength ? TrendingUp : AlertCircle;
+  const bgColor = isStrength ? 'bg-emerald-50/50' : 'bg-amber-50/50';
+  const iconColor = isStrength ? 'text-emerald-500' : 'text-amber-500';
+
   return (
-    <div>
-      <div className="text-sm text-gray-500 mb-2">{title}</div>
-      <ul className="space-y-2">
-        {items.length === 0 && <li className="text-sm text-gray-600">No insights available.</li>}
+    <div className="flex-1">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon size={16} className={iconColor} />
+        <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-[0.1em]">{title}</div>
+      </div>
+      <ul className="space-y-3">
+        {items.length === 0 && <li className="text-sm text-slate-400 italic px-2">No insights ready yet...</li>}
         {items.map((it) => (
-          <li key={it.topic} className="p-3 bg-gray-50 rounded"> 
-            <div className="text-sm font-medium text-gray-900">{it.topic}</div>
-            <div className="text-xs text-gray-600 mt-1">{it.note}</div>
+          <li key={it.topic} className={`p-4 ${bgColor} rounded-2xl border border-white/50 transition-all hover:scale-[1.02] cursor-default`}>
+            <div className="text-[13px] font-bold text-slate-800">{it.topic}</div>
+            <div className="text-[11px] text-slate-500 mt-1 leading-relaxed font-medium">{it.note}</div>
           </li>
         ))}
       </ul>
@@ -22,24 +30,23 @@ function List({ title, items }) {
 
 export default function InsightsPanel({ strengths = [], needs = [] }) {
   return (
-    <div className="space-y-4">
-      <Card>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm text-gray-500">Learning Insights</div>
-            <div className="text-lg font-semibold">Personalized strengths & recommendations</div>
+    <div className="animate-fade-in space-y-6">
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <div className="flex items-center gap-2 text-primary-600 mb-1">
+            <Sparkles size={16} className="animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Personalized AI Engine</span>
           </div>
-          <Button variant="ghost">View full report</Button>
+          <h3 className="text-lg font-bold text-slate-800 tracking-tight">Learning Insights</h3>
         </div>
-      </Card>
+        <Button variant="ghost" size="sm" className="text-xs font-bold text-slate-400 hover:text-primary-600">
+          View Report
+        </Button>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <Card>
-          <List title="Strengths" items={strengths} />
-        </Card>
-        <Card>
-          <List title="Needs Improvement" items={needs} />
-        </Card>
+      <div className="grid grid-cols-1 gap-6">
+        <List title="Core Strengths" items={strengths} variant="strength" />
+        <List title="Opportunity Areas" items={needs} variant="need" />
       </div>
     </div>
   );

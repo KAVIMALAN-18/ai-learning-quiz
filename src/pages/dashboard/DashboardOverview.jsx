@@ -1,7 +1,34 @@
 import React from 'react';
-import Dashboard from '../../components/Dashboard';
+import Dashboard from '../../components/dashboard/Dashboard';
+import ErrorState from '../../components/ui/ErrorState';
+import { useDashboardData } from '../../hooks/useDashboardData';
 
-// DashboardOverview: reuses the existing dashboard body component
+/**
+ * DashboardOverview: Acts as a container to fetch and pass data using useDashboardData hook.
+ */
 export default function DashboardOverview() {
-  return <Dashboard />;
+  const { stats, velocity, recentQuizzes, roadmap, isLoading, error, refresh } = useDashboardData();
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <ErrorState
+          title="Dashboard Unavailable"
+          message={error}
+          onRetry={refresh}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Dashboard
+      stats={stats}
+      velocity={velocity}
+      recentQuizzes={recentQuizzes}
+      roadmap={roadmap}
+      isLoading={isLoading}
+    />
+  );
 }
+

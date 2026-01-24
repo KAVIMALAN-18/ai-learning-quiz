@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Centralized Axios client for the app. Reads base URL from Vite env or falls back.
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: BASE,
@@ -33,11 +33,11 @@ api.interceptors.response.use(
     if (status === 401) {
       try {
         localStorage.removeItem('token');
-      } catch (e) {}
+      } catch (e) { }
       // Broadcast an auth expiration event — AuthProvider or top-level app can listen
       try {
         window.dispatchEvent(new Event('auth:expired'));
-      } catch (e) {}
+      } catch (e) { }
     }
     return Promise.reject(error);
   }
