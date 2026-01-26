@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 
 const {
   getRoadmap,
@@ -14,14 +14,14 @@ const {
 
 // GET roadmap by topic
 // /api/roadmap?topic=JavaScript
-router.get("/", authMiddleware, getRoadmap);
+router.get("/", protect, getRoadmap);
 
 // Update roadmap step completion
 // /api/roadmap/:id/step/:index
-router.put("/:id/step/:index", authMiddleware, updateStep);
+router.put("/:id/step/:index", protect, updateStep);
 
 // Regenerate roadmap
 // /api/roadmap/:id/regenerate
-router.post("/:id/regenerate", authMiddleware, regenerateRoadmap);
+router.post("/:id/regenerate", protect, regenerateRoadmap);
 
 module.exports = router;

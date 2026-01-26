@@ -14,9 +14,32 @@ const helmet = require("helmet");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 
+
 const { requestLogger, errorLogger } = require("./middleware/logger");
 
 const app = express();
+
+/* =========================
+   ✅ GLOBAL MIDDLEWARE
+   ========================= */
+
+// CORS configuration (MUST be first to handle preflight)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: process.env.NODE_ENV === "development" ? true : allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 /* =========================
    ✅ PRODUCTION HARDENING
@@ -28,63 +51,58 @@ app.use(helmet());
 // Gzip Compression
 app.use(compression());
 
-// Rate Limiting
+// Request Logging
+app.use(requestLogger);
+
+// Rate Limiting (Applied after CORS to allow preflight)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === "development" ? 1000 : (parseInt(process.env.RATE_LIMIT_MAX) || 100),
   message: "Too many requests from this IP, please try again after 15 minutes"
 });
 app.use("/api/", limiter);
 
-/* =========================
-   ✅ GLOBAL MIDDLEWARE
-   ========================= */
-
-// Request Logging
-app.use(requestLogger);
-
-// CORS
-// CORS configuration
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  process.env.FRONTEND_URL, // Production domain
-  "https://*.vercel.app"    // Allow Vercel preview deployments
-].filter(Boolean);
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-
 // Body parser
 app.use(express.json());
-
-console.log("✅ index.js loaded");
 
 /* =========================
    ✅ ROUTES
    ========================= */
 
 app.use("/api/auth", authRoutes);
-console.log("✅ auth routes mounted");
-
 app.use("/api/onboarding", onboardingRoutes);
-console.log("✅ onboarding routes mounted");
-
 app.use("/api/roadmap", roadmapRoutes);
-console.log("✅ roadmap routes mounted");
-
 app.use("/api/chat", chatRoutes);
-console.log("✅ chat routes mounted");
+
+const jobRoutes = require("./routes/jobs");
+const recommendationRoutes = require("./routes/recommendations");
+const mentorRoutes = require("./routes/mentor");
+const adminRoutes = require("./routes/admin");
+const certificateRoutes = require("./routes/certificates");
+const profileRoutes = require("./routes/profile");
 
 app.use("/api/quiz", quizRoutes);
-console.log("✅ quiz routes mounted");
+app.use("/api/jobs", jobRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/mentor", mentorRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/certificates", certificateRoutes);
+app.use("/api/profile", profileRoutes);
+
+const dashboardRoutes = require("./routes/dashboard");
+app.use("/api/dashboard", dashboardRoutes);
+
+const analyticsRoutes = require("./routes/analytics");
+app.use("/api/analytics", analyticsRoutes);
+
+const courseRoutes = require("./routes/course.routes");
+app.use("/api/courses", courseRoutes);
+
+const careerRoutes = require("./routes/career.routes");
+app.use("/api/career", careerRoutes);
+
+const interviewRoutes = require("./routes/interview.routes");
+app.use("/api/interview", interviewRoutes);
 
 // Health checks
 app.get("/api/health", (req, res) => {
@@ -102,12 +120,10 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "API is running 🚀" });
 });
 
-
 /* =========================
    ❌ GLOBAL ERROR HANDLER
    ========================= */
 app.use(errorLogger);
-
 
 /* =========================
    ✅ DATABASE + SERVER

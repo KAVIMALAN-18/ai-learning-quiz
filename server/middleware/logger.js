@@ -24,20 +24,22 @@ const requestLogger = (req, res, next) => {
  */
 const errorLogger = (err, req, res, next) => {
     const status = err.status || 500;
-    const message = err.message || "Internal Server Error";
+    const isProduction = process.env.NODE_ENV === "production";
 
-    // Log the error detail for developers (safe from client view)
-    console.error(`🚨 ERROR [${status}]: ${message}`);
-    if (process.env.NODE_ENV === "development") {
+    // Detailed logging for server-side monitoring
+    console.error(`🚨 ERROR [${status}]: ${err.message}`);
+    if (!isProduction) {
         console.error(err.stack);
     }
 
+    // Mask sensitive details for production clients
     res.status(status).json({
         success: false,
-        message: status === 500 && process.env.NODE_ENV === "production"
-            ? "An unexpected error occurred. Please try again later."
-            : message,
-        stack: process.env.NODE_ENV === "development" ? err.stack : undefined
+        message: status === 500 && isProduction
+            ? "An unexpected system error occurred. Our team has been notified."
+            : err.message,
+        // Only provide stack in development
+        ...(!isProduction && { stack: err.stack })
     });
 };
 

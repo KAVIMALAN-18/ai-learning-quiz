@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const Quiz = require('../models/Quiz');
 const Question = require('../models/Question');
 const QuizAttempt = require('../models/QuizAttempt');
@@ -35,7 +35,7 @@ Return ONLY a JSON array of question objects.`;
 
 // POST /api/quiz/generate
 // Create an AI-generated quiz using Gemini. Accessible to authenticated users.
-router.post('/generate', authMiddleware, async (req, res) => {
+router.post('/generate', protect, async (req, res) => {
   try {
     const { topic, difficulty = 'Intermediate', count = 10, timeLimit } = req.body || {};
     if (!topic || !count) return res.status(400).json({ message: 'topic and count are required' });
@@ -128,13 +128,52 @@ async function gradeAndSaveAttempt({ userId, quizId, answers = [], timeTaken = 0
 }
 
 // POST /api/quiz/submit/:quizId
-router.post('/submit/:quizId', authMiddleware, async (req, res) => {
+router.post('/submit/:quizId', protect, async (req, res) => {
   try {
     const quizId = req.params.quizId;
     const { answers = [], timeTaken = 0 } = req.body || {};
     if (!quizId) return res.status(400).json({ message: 'quizId required' });
 
     const result = await gradeAndSaveAttempt({ userId: req.user.id, quizId, answers, timeTaken });
+
+    // Update user mastery and generate certificate
+    const quiz = await Quiz.findById(quizId);
+    if (quiz && quiz.topic) {
+      const userScore = result.score;
+
+      // Update user mastery for this topic
+      await User.findByIdAndUpdate(req.user.id, {
+        $set: {
+          [`mastery.${quiz.topic}`]: userScore,
+          lastActive: new Date()
+        }
+      });
+
+      // Auto-generate certificate if score >= 60%
+      if (userScore >= 60) {
+        const user = await User.findById(req.user.id).select('name');
+        const Certificate = require('../models/Certificate');
+
+        // Check if certificate already exists
+        const existingCert = await Certificate.findOne({ userId: req.user.id, quizId });
+
+        if (!existingCert) {
+          await Certificate.create({
+            userId: req.user.id,
+            userName: user.name,
+            courseName: `${quiz.topic} - ${quiz.difficulty || 'Intermediate'}`,
+            courseType: 'quiz',
+            quizId: quiz._id,
+            score: userScore,
+            metadata: {
+              level: quiz.difficulty,
+              topics: [quiz.topic]
+            }
+          });
+        }
+      }
+    }
+
     return res.json({ result: { score: result.score, answers: result.answers, attemptId: result.attempt._id } });
   } catch (err) {
     console.error('Quiz submit error:', err?.message || err);
@@ -143,7 +182,7 @@ router.post('/submit/:quizId', authMiddleware, async (req, res) => {
 });
 
 // POST /api/quiz/submit (body contains quizId)
-router.post('/submit', authMiddleware, async (req, res) => {
+router.post('/submit', protect, async (req, res) => {
   try {
     const { quizId, answers = [], timeTaken = 0 } = req.body || {};
     if (!quizId) return res.status(400).json({ message: 'quizId required' });
@@ -157,7 +196,7 @@ router.post('/submit', authMiddleware, async (req, res) => {
 });
 
 // GET ONGOING quiz for the user (dashboard continue)
-router.get('/ongoing', authMiddleware, async (req, res) => {
+router.get('/ongoing', protect, async (req, res) => {
   try {
     const attempt = await QuizAttempt.findOne({ userId: req.user.id, status: 'ongoing' }).sort({ startedAt: -1 }).populate('quizId');
     return res.json({ quiz: attempt || null });
@@ -168,7 +207,7 @@ router.get('/ongoing', authMiddleware, async (req, res) => {
 });
 
 // GET recent attempts for dashboard
-router.get('/recent', authMiddleware, async (req, res) => {
+router.get('/recent', protect, async (req, res) => {
   try {
     const limit = Number(req.query.limit || 5);
     const attempts = await QuizAttempt.find({ userId: req.user.id, status: 'completed' }).sort({ submittedAt: -1 }).limit(limit).populate('quizId');
@@ -180,7 +219,7 @@ router.get('/recent', authMiddleware, async (req, res) => {
 });
 
 // GET /api/quiz/history — list past attempts for the authenticated user
-router.get('/history', authMiddleware, async (req, res) => {
+router.get('/history', protect, async (req, res) => {
   try {
     const limit = Math.min(50, Number(req.query.limit || 20));
     const attempts = await QuizAttempt.find({ userId: req.user.id, status: 'completed' }).sort({ submittedAt: -1 }).limit(limit).populate('quizId');
@@ -201,14 +240,16 @@ router.get('/history', authMiddleware, async (req, res) => {
 });
 
 // GET /api/quiz/:id — return quiz with questions (no correct answers)
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', protect, async (req, res) => {
   try {
     if (!req.params.id || req.params.id === 'undefined' || req.params.id === 'null') {
       return res.status(400).json({ message: 'Invalid Quiz ID' });
     }
     const mongoose = require('mongoose');
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: 'Invalid Quiz ID format' });
+      // If requested ID is not a MongoDB ObjectId (e.g. "1", "2"), return 404 cleanly
+      // This prevents "Cast to ObjectId failed" errors for mock data URLs
+      return res.status(404).json({ message: 'Quiz not found' });
     }
     const quiz = await Quiz.findById(req.params.id).populate('questions');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found' });

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const ChatMessage = require('../models/ChatMessage');
 
@@ -21,7 +21,7 @@ async function callGeminiChat({ topic, level, history, question }) {
 }
 
 // POST /api/chat/ask  { topic, question }
-router.post('/ask', authMiddleware, async (req, res) => {
+router.post('/ask', protect, async (req, res) => {
   try {
     const { topic, question } = req.body;
     if (!topic || !question || typeof question !== 'string' || question.trim().length === 0) {
@@ -55,7 +55,7 @@ router.post('/ask', authMiddleware, async (req, res) => {
 });
 
 // GET /api/chat/messages?topic=JavaScript
-router.get('/messages', authMiddleware, async (req, res) => {
+router.get('/messages', protect, async (req, res) => {
   try {
     const topic = (req.query.topic || '').trim();
     if (!topic) return res.status(400).json({ message: 'Topic query parameter is required' });
@@ -69,7 +69,7 @@ router.get('/messages', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/chat/clear?topic=JavaScript
-router.delete('/clear', authMiddleware, async (req, res) => {
+router.delete('/clear', protect, async (req, res) => {
   try {
     const topic = (req.query.topic || '').trim();
     if (!topic) return res.status(400).json({ message: 'Topic query parameter is required' });

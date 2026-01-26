@@ -5,7 +5,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const authMiddleware = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 
 // DEBUG LOG
 console.log("auth.js file loaded");
@@ -55,6 +55,7 @@ router.post("/register", async (req, res) => {
         name: user.name,
         email: user.email,
         mobile: user.mobile,
+        role: user.role || 'user'
       },
     });
   } catch (error) {
@@ -102,6 +103,7 @@ router.post("/login", async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role || 'user'
       },
     });
   } catch (error) {
@@ -113,18 +115,26 @@ router.post("/login", async (req, res) => {
 /* =========================
    PROFILE (PROTECTED)
 ========================= */
-router.get("/profile", authMiddleware, async (req, res) => {
+router.get("/profile", protect, async (req, res) => {
   try {
+    // console.log("Profile route accessed. User ID:", req.user?.id); // Debug log
+
+    if (!req.user || !req.user.id) {
+      console.error("Profile Error: No user ID in request");
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
     const user = await User.findById(req.user.id).select("-password");
 
     if (!user) {
+      console.error("Profile Error: User not found in DB for ID:", req.user.id);
       return res.status(404).json({ message: "User not found" });
     }
 
     res.json(user);
   } catch (error) {
-    console.error("Profile error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Profile Critical Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
