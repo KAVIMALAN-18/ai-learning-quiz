@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../services/api.client";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { Pie, Bar } from "react-chartjs-2";
@@ -41,14 +41,7 @@ const QuizPlayer = () => {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:3000/api/quiz/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const res = await api.get(`/quiz/${id}`);
         setQuiz(res.data.quiz);
         setAnswers(res.data.quiz.questions.map(() => null));
       } catch (err) {
@@ -106,17 +99,14 @@ const QuizPlayer = () => {
         })),
       };
 
-      const res = await axios.post(
-        "http://localhost:3000/api/quiz/submit",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await api.post("/quiz/submit", payload);
 
-      setResult(res.data.attempt);
+      if (res.data.result) {
+        setResult(res.data.result);
+      } else if (res.data.attempt) {
+        // Fallback for different API versions
+        setResult(res.data.attempt);
+      }
     } catch (err) {
       console.error("Submit failed:", err);
     } finally {
@@ -299,8 +289,8 @@ const QuizPlayer = () => {
                   key={i}
                   onClick={() => selectAnswer(opt)}
                   className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 flex items-center justify-between group ${answers[currentIndex] === opt
-                      ? "bg-primary-50 border-primary-500 ring-4 ring-primary-500/5 shadow-md"
-                      : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                    ? "bg-primary-50 border-primary-500 ring-4 ring-primary-500/5 shadow-md"
+                    : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                     }`}
                 >
                   <span className={`text-base font-semibold ${answers[currentIndex] === opt ? "text-primary-700" : "text-slate-600"}`}>
@@ -330,8 +320,8 @@ const QuizPlayer = () => {
                       selectAnswer(updated);
                     }}
                     className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 flex items-center justify-between group ${isSelected
-                        ? "bg-primary-50 border-primary-500 ring-4 ring-primary-500/5 shadow-md"
-                        : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                      ? "bg-primary-50 border-primary-500 ring-4 ring-primary-500/5 shadow-md"
+                      : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                       }`}
                   >
                     <span className={`text-base font-semibold ${isSelected ? "text-primary-700" : "text-slate-600"}`}>

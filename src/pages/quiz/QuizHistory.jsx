@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import quizService from '../../services/quiz.service';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import ErrorState from '../../components/ui/ErrorState';
 import {
     History,
     Search,
@@ -22,14 +25,38 @@ export default function QuizHistory() {
     const [filterStatus, setFilterStatus] = useState('All');
     const [sortOrder, setSortOrder] = useState('date'); // 'date' | 'score'
 
-    // Mock Data
-    const attempts = [
-        { id: '1', title: 'React Essentials', topic: 'React', date: '2023-10-25T14:30:00', score: 8, total: 10, time: 320, status: 'pass' },
-        { id: '2', title: 'Advanced JavaScript', topic: 'JavaScript', date: '2023-10-24T09:15:00', score: 4, total: 10, time: 450, status: 'fail' },
-        { id: '3', title: 'CSS Flexbox Mastery', topic: 'CSS', date: '2023-10-20T18:00:00', score: 9, total: 10, time: 280, status: 'pass' },
-        { id: '4', title: 'Node.js Microservices', topic: 'Node.js', date: '2023-10-18T11:45:00', score: 7, total: 10, time: 600, status: 'pass' },
-        { id: '5', title: 'React Hooks Deep Dive', topic: 'React', date: '2023-10-15T15:20:00', score: 5, total: 12, time: 500, status: 'fail' },
-    ];
+    const [attempts, setAttempts] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setIsLoading(true);
+            try {
+                // The backend returns an array of attempts with basic info
+                // We might need to fetch more details if we want topic names, etc.
+                // But the backend route already maps some fields.
+                const data = await quizService.getHistory();
+                // Map backend response to UI structure
+                const mapped = (data.attempts || []).map(a => ({
+                    id: a.attemptId,
+                    title: a.title || 'Untitled Quiz',
+                    topic: a.title || 'General', // Backend might not send topic separately
+                    date: a.submittedAt,
+                    score: a.score,
+                    total: 100, // Score is usually percentage or total marks
+                    time: 0, // Backend might not send this in history route
+                    status: a.score >= 60 ? 'pass' : 'fail'
+                }));
+                setAttempts(mapped);
+            } catch (err) {
+                setError(err.response?.data?.message || err.message || "Failed to load history");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchHistory();
+    }, []);
 
     // Filtering & Sorting
     const filteredAttempts = attempts.filter(a => {
@@ -38,7 +65,7 @@ export default function QuizHistory() {
         return matchTopic && matchStatus;
     }).sort((a, b) => {
         if (sortOrder === 'date') return new Date(b.date) - new Date(a.date);
-        if (sortOrder === 'score') return (b.score / b.total) - (a.score / a.total);
+        if (sortOrder === 'score') return b.score - a.score;
         return 0;
     });
 
@@ -53,6 +80,27 @@ export default function QuizHistory() {
         const s = seconds % 60;
         return `${m}m ${s}s`;
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center">
+                <LoadingSpinner />
+                <p className="mt-4 text-slate-500 font-medium">Loading your quiz history...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center p-6">
+                <ErrorState
+                    title="History Unavailable"
+                    message={error}
+                    onRetry={() => window.location.reload()}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto pb-12 animate-fade-in font-sans">

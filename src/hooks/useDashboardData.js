@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
-import { DASHBOARD_STATS, LEARNING_VELOCITY, RECENT_ASSESSMENTS, ACTIVE_ROADMAP } from "../data/dashboard.mock";
+import dashboardService from "../services/dashboard.service";
+import quizService from "../services/quiz.service";
+import analyticsService from "../services/analytics.service";
+import { BookOpen, CheckCircle2, Trophy, Zap } from "lucide-react";
 
 /**
  * Custom hook to fetch and manage Dashboard data.
- * Currently uses mock data but is structured to easily plug in API calls.
+ * Connects to real backend APIs including new interactive charts.
  */
 export const useDashboardData = () => {
     const [data, setData] = useState({
@@ -11,6 +14,11 @@ export const useDashboardData = () => {
         velocity: {},
         recentQuizzes: [],
         roadmap: {},
+        charts: {
+            performance: [],
+            topics: [],
+            roadmapData: []
+        }
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -19,21 +27,88 @@ export const useDashboardData = () => {
         setIsLoading(true);
         setError(null);
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const [analytics, recent, roadmaps, perf, topics, rProgress] = await Promise.all([
+                dashboardService.getAnalyticsOverview(),
+                quizService.listRecent(5),
+                dashboardService.getRoadmap("JavaScript"),
+                analyticsService.getQuizPerformance(),
+                analyticsService.getTopicAccuracy(),
+                analyticsService.getRoadmapProgress()
+            ]);
 
-            // In a real app, replace with:
-            // const response = await api.get('/dashboard/stats');
-            // setData(response.data);
+            // Map Analytics to Stats array
+            const stats = [
+                {
+                    label: "Courses Enrolled",
+                    value: analytics.completedCourses || 0,
+                    subtext: "Active paths",
+                    icon: BookOpen,
+                    colorClass: "bg-primary-500"
+                },
+                {
+                    label: "Quizzes Done",
+                    value: analytics.totalQuizzes || 0,
+                    subtext: "Total attempted",
+                    icon: CheckCircle2,
+                    colorClass: "bg-success"
+                },
+                {
+                    label: "Avg. Accuracy",
+                    value: `${analytics.avgScore || 0}%`,
+                    subtext: "Average score",
+                    icon: Trophy,
+                    colorClass: "bg-warning"
+                },
+                {
+                    label: "Learning Streak",
+                    value: `${analytics.streak || 0} Days`,
+                    subtext: "Current streak",
+                    icon: Zap,
+                    colorClass: "bg-primary-600"
+                }
+            ];
+
+            // Map Recent Quizzes
+            const recentQuizzesArr = (recent.quizzes || []).map(q => ({
+                id: q._id,
+                title: q.quizId?.title || q.quizId?.topic || 'Quiz',
+                score: q.score,
+                status: q.score >= 60 ? 'Passed' : 'Failed',
+                date: new Date(q.submittedAt).toLocaleDateString(),
+                duration: `${Math.round(q.timeTaken / 60)} mins`,
+                difficulty: q.quizId?.difficulty || 'Intermediate'
+            }));
+
+            // Map Roadmap
+            const activeRoadmap = roadmaps?.roadmap || (Array.isArray(roadmaps) ? roadmaps[0] : roadmaps);
+            const roadmapResult = activeRoadmap ? {
+                title: activeRoadmap.topic,
+                subtitle: activeRoadmap.level,
+                steps: (activeRoadmap.steps || []).slice(0, 3).map(s => ({
+                    title: s.title,
+                    status: s.completed ? 'completed' : 'active'
+                }))
+            } : {};
 
             setData({
-                stats: DASHBOARD_STATS,
-                velocity: LEARNING_VELOCITY,
-                recentQuizzes: RECENT_ASSESSMENTS,
-                roadmap: ACTIVE_ROADMAP,
+                stats,
+                velocity: {
+                    mastery: analytics.progressPercent || 0,
+                    completedModules: analytics.completedSteps || 0,
+                    totalModules: analytics.totalSteps || 0,
+                    activityData: analytics.activityData || []
+                },
+                recentQuizzes: recentQuizzesArr,
+                roadmap: roadmapResult,
+                charts: {
+                    performance: perf,
+                    topics: topics,
+                    roadmapData: rProgress
+                }
             });
         } catch (err) {
-            setError(err.message || "Failed to load dashboard data");
+            console.error("Dashboard error:", err);
+            setError(err.response?.data?.message || err.message || "Failed to load dashboard data");
         } finally {
             setIsLoading(false);
         }

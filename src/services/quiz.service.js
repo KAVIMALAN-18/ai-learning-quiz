@@ -38,6 +38,11 @@ const quizService = {
     const res = await api.get(`${BASE}/ongoing`);
     return res.data;
   },
+  // Get all quiz history for the current user
+  getHistory: async (limit = 20) => {
+    const res = await api.get(`${BASE}/history?limit=${limit}`);
+    return res.data;
+  },
 };
 
 export default quizService;

@@ -1,9 +1,17 @@
 import api from "./api.client";
 
+// New method to fetch dashboard overview data
+
 /* =========================
    Dashboard Service
    ========================= */
 const dashboardService = {
+  /* -------- ANALYTICS -------- */
+  async getAnalyticsOverview() {
+    const res = await api.get("/analytics/overview");
+    return res.data;
+  },
+
   /* -------- ROADMAP -------- */
 
   // GET roadmap by topic
@@ -48,6 +56,12 @@ const dashboardService = {
     );
     return res.data;
   },
+  // Fetch dashboard overview (user profile + stats)
+  async getDashboardOverview() {
+    const res = await api.get('/dashboard/overview');
+    return res.data;
+  },
+
 };
 
 export default dashboardService;

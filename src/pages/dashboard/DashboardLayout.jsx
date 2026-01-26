@@ -78,6 +78,7 @@ export default function DashboardLayout() {
             <NavLink to="/dashboard/roadmap" className={tabClass}>My Roadmap</NavLink>
             <NavLink to="/dashboard/quiz" className={tabClass}>Quiz Library</NavLink>
             <NavLink to="/dashboard/courses" className={tabClass}>Courses</NavLink>
+            <NavLink to="/dashboard/recommendations" className={tabClass}>AI Recommendations</NavLink>
             <NavLink to="/dashboard/chat" className={tabClass}>AI Tutor</NavLink>
           </div>
         </div>

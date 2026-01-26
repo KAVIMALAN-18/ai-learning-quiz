@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Container from "./ui/Container";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, Edit3, LogOut, LayoutDashboard, Compass } from "lucide-react";
+import { Menu, Home, Edit3, LogOut, LayoutDashboard, Compass, Briefcase } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 
 const NavLink = ({ to, icon: Icon, children, onClick }) => {
@@ -44,7 +44,8 @@ const Layout = ({ children }) => {
         <nav className="flex-1">
           <ul className="space-y-2">
             <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
-            <NavLink to="/onboarding" icon={Edit3}>Onboarding</NavLink>
+            <NavLink to="/dashboard/roadmap" icon={Compass}>Roadmap</NavLink>
+            <NavLink to="/dashboard/jobs" icon={Briefcase}>Career Board</NavLink>
           </ul>
         </nav>
 

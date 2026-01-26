@@ -7,7 +7,7 @@ import { useDashboardData } from '../../hooks/useDashboardData';
  * DashboardOverview: Acts as a container to fetch and pass data using useDashboardData hook.
  */
 export default function DashboardOverview() {
-  const { stats, velocity, recentQuizzes, roadmap, isLoading, error, refresh } = useDashboardData();
+  const { stats, velocity, recentQuizzes, roadmap, charts, isLoading, error, refresh } = useDashboardData();
 
   if (error) {
     return (
@@ -27,6 +27,7 @@ export default function DashboardOverview() {
       velocity={velocity}
       recentQuizzes={recentQuizzes}
       roadmap={roadmap}
+      charts={charts}
       isLoading={isLoading}
     />
   );

@@ -11,22 +11,27 @@ import {
   Settings,
   LogOut,
   BrainCircuit,
-  LayoutDashboard
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  ShieldCheck,
+  Award
 } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 import { MetaText } from "./ui/Typography";
 
 const MAIN_NAV = [
-  { to: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
+  { to: "/dashboard/overview", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard/courses", label: "My Courses", icon: BookOpen },
   { to: "/dashboard/roadmap", label: "Roadmap", icon: Map },
-  { to: "/dashboard/quizzes", label: "Practice Quizzes", icon: BookOpen },
+  { to: "/dashboard/quizzes", label: "Quizzes", icon: Layers },
   { to: "/dashboard/chat", label: "AI Tutor", icon: MessageCircle },
+  { to: "/dashboard/results", label: "Results", icon: Award },
 ];
 
-const ANALYTICS_NAV = [
-  { to: "/dashboard/progress", label: "Progress", icon: BarChart2 },
-  { to: "/dashboard/goals", label: "Goals", icon: Target },
-  { to: "/dashboard/analytics", label: "Analytics", icon: Layers },
+const SETTINGS_NAV = [
+  { to: "/dashboard/profile", label: "Profile", icon: Users },
+  { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 const NavItem = ({ to, icon: Icon, label, onClick }) => (
@@ -48,7 +53,7 @@ const NavItem = ({ to, icon: Icon, label, onClick }) => (
 );
 
 export default function Sidebar({ onNavItemClick }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <aside className="w-72 bg-white border-r border-neutral-100 h-full flex flex-col shrink-0 z-30 transition-all">
@@ -66,25 +71,37 @@ export default function Sidebar({ onNavItemClick }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-6 space-y-10 scrollbar-hide">
+      <nav className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
         <div>
-          <MetaText className="uppercase font-bold tracking-[0.2em] text-neutral-400 mb-4 px-4 block">
-            Learning
-          </MetaText>
           <ul className="space-y-1.5">
             {MAIN_NAV.map((item) => <NavItem key={item.to} {...item} onClick={onNavItemClick} />)}
           </ul>
         </div>
 
-        <div>
+        <div className="pt-6 border-t border-neutral-50">
           <MetaText className="uppercase font-bold tracking-[0.2em] text-neutral-400 mb-4 px-4 block">
-            Discovery
+            Preferences
           </MetaText>
           <ul className="space-y-1.5">
-            {ANALYTICS_NAV.map((item) => <NavItem key={item.to} {...item} onClick={onNavItemClick} />)}
+            {SETTINGS_NAV.map((item) => <NavItem key={item.to} {...item} onClick={onNavItemClick} />)}
           </ul>
         </div>
+
+        {/* 🛡️ Admin Section */}
+        {(user?.role === 'admin' || user?.role === 'super_admin') && (
+          <div className="pt-6 border-t border-neutral-50">
+            <MetaText className="uppercase font-bold tracking-[0.2em] text-primary-600 mb-4 px-4 block">
+              Admin Control
+            </MetaText>
+            <ul className="space-y-1.5">
+              <NavItem to="/dashboard/admin/overview" label="Admin Dashboard" icon={LayoutDashboard} onClick={onNavItemClick} />
+              <NavItem to="/dashboard/admin/courses" label="Manage Courses" icon={BookOpen} onClick={onNavItemClick} />
+              <NavItem to="/dashboard/admin/users" label="Users" icon={Users} onClick={onNavItemClick} />
+            </ul>
+          </div>
+        )}
       </nav>
+
 
       {/* User Footer */}
       <div className="p-6 border-t border-neutral-100 bg-neutral-50/50">

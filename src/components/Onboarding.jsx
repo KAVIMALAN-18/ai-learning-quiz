@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../services/api.client";
 import { Check, Plus, Rocket, Sparkles, Target, Zap } from "lucide-react";
 import { Card } from "./ui/Card";
 import Button from "./ui/Button";

@@ -21,9 +21,20 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Role-based protection
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    console.warn(`⛔ Access Denied: User role '${user?.role}' is not authorized for this route.`);
+  // Waif for user profile to load if we have a token but no user yet
+  // Depending on AuthProvider logic, 'loading' might need to be true here.
+  // If loading is false but user is null, it means fetch failed (500 error we saw).
+  // In that case, let's show an error or redirect to login to retry.
+  if (!user && !loading) {
+    // Fallback: If token exists but user fetch failed heavily, force logout or show error
+    // return <Navigate to="/login" replace />; 
+    // Better: Show concise error
+    return <div className="p-10 text-center text-red-500">Failed to load user profile. Please refresh or log in again.</div>
+  }
+
+  // Role-based protection: Only check if user exists
+  if (user && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    console.warn(`⛔ Access Denied: User role '${user.role}' is not authorized for this route.`);
     return <Navigate to="/dashboard/overview" replace />;
   }
 
