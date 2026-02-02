@@ -9,7 +9,7 @@ export default function DashboardLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="h-screen bg-neutral-50 flex overflow-hidden font-sans text-neutral-900 selection:bg-primary-100">
+    <div className="h-screen bg-mesh flex overflow-hidden font-sans text-neutral-900 selection:bg-primary-500 selection:text-white">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block h-full border-r border-neutral-100 bg-white">
         <Sidebar />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
 import { useAuth } from '../../context/useAuth';
@@ -23,6 +23,7 @@ export default function QuizOverview() {
   const [difficultyFilter, setDifficultyFilter] = useState('All');
   const [topicFilter, setTopicFilter] = useState('All');
   const [error, setError] = useState(null);
+  const lastSyncRef = useRef(0);
 
   // Templates from centralized mock data
   const templates = QUIZ_TEMPLATES;
@@ -30,6 +31,10 @@ export default function QuizOverview() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      const now = Date.now();
+      if (now - lastSyncRef.current < 2000) return;
+      lastSyncRef.current = now;
+
       setLoading(true);
       setError(null);
       try {

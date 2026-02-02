@@ -1,0 +1,39 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Frontend Dependencies
+      run: npm install
+
+    - name: Lint Frontend
+      run: npm run lint
+
+    - name: Build Frontend
+      run: npm run build
+
+    - name: Install Backend Dependencies
+      working-directory: ./server
+      run: npm install
+
+    - name: Backend Status Check
+      working-directory: ./server
+      run: |
+        node -c index.js
+        echo "Backend syntax is valid."

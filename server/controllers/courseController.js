@@ -1,15 +1,39 @@
 const Course = require('../models/Course');
 const Module = require('../models/Module');
-const Lesson = require('../models/Lesson');
+const Topic = require('../models/Topic');
 const UserProgress = require('../models/UserProgress');
+const { updateDailyProgress } = require("../utils/analyticsHelper");
 
 /**
  * GET all courses
  */
 exports.getAllCourses = async (req, res) => {
     try {
+        const userId = req.user?.id;
         const courses = await Course.find({ isActive: true }).select('-modules').lean();
-        res.json(courses);
+
+        // Get user progress for all courses if logged in
+        let progressEntries = [];
+        if (userId) {
+            progressEntries = await UserProgress.find({ userId }).lean();
+        }
+
+        const coursesWithProgress = courses.map(course => {
+            const userProgress = progressEntries.find(p => p.courseId.toString() === course._id.toString());
+
+            let progress = 0;
+            if (userProgress && course.totalTopics > 0) {
+                progress = Math.round((userProgress.completedTopics.length / course.totalTopics) * 100);
+            }
+
+            return {
+                ...course,
+                progress,
+                isEnrolled: !!userProgress
+            };
+        });
+
+        res.json(coursesWithProgress);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -28,7 +52,7 @@ exports.getCourseDetails = async (req, res) => {
                 path: 'modules',
                 options: { sort: { 'order': 1 } },
                 populate: {
-                    path: 'lessons',
+                    path: 'topics',
                     options: { sort: { 'order': 1 } },
                     select: 'title slug' // Don't send full content in curriculum list
                 }
@@ -42,7 +66,7 @@ exports.getCourseDetails = async (req, res) => {
 
         res.json({
             ...course,
-            userProgress: progress || { completedLessons: [], lastLessonId: null }
+            userProgress: progress || { completedTopics: [], lastTopicId: null }
         });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -50,48 +74,53 @@ exports.getCourseDetails = async (req, res) => {
 };
 
 /**
- * GET lesson by ID (with full content)
+ * GET topic by ID (with full content)
  */
-exports.getLesson = async (req, res) => {
+exports.getTopic = async (req, res) => {
     try {
-        const { lessonId } = req.params;
+        const { topicId } = req.params;
         const userId = req.user.id;
 
-        const lesson = await Lesson.findById(lessonId).lean();
-        if (!lesson) return res.status(404).json({ message: "Lesson not found" });
+        const topic = await Topic.findById(topicId).lean();
+        if (!topic) return res.status(404).json({ message: "Topic not found" });
 
-        // Update last accessed lesson in progress
+        // Update last accessed topic in progress
         await UserProgress.findOneAndUpdate(
-            { userId, courseId: lesson.moduleId.courseId }, // This requires moduleId to have courseId or some mapping
-            { lastLessonId: lessonId },
+            { userId, courseId: topic.moduleId.courseId }, // This still needs correct courseId mapping or direct lookup
+            { lastTopicId: topicId },
             { upsert: true }
         );
 
-        res.json(lesson);
+        res.json(topic);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 };
 
 /**
- * POST mark lesson as completed
+ * POST mark topic as completed
  */
-exports.completeLesson = async (req, res) => {
+exports.completeTopic = async (req, res) => {
     try {
-        const { lessonId, courseId } = req.body;
+        const { topicId, courseId } = req.body;
         const userId = req.user.id;
 
         const progress = await UserProgress.findOneAndUpdate(
             { userId, courseId },
-            { $addToSet: { completedLessons: lessonId } },
+            { $addToSet: { completedTopics: topicId } },
             { new: true, upsert: true }
         );
+
+        if (progress) {
+            updateDailyProgress(userId, { type: 'topic' });
+        }
 
         res.json(progress);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 };
+
 /**
  * POST submit topic test
  */
@@ -100,12 +129,12 @@ exports.submitTopicTest = async (req, res) => {
         const { topicId, courseId, answers } = req.body;
         const userId = req.user.id;
 
-        const lesson = await Lesson.findById(topicId).populate('moduleId');
-        if (!lesson) return res.status(404).json({ message: "Topic not found" });
+        const topic = await Topic.findById(topicId).populate('moduleId');
+        if (!topic) return res.status(404).json({ message: "Topic not found" });
 
         // Calculate score (simple MCQ check)
         let correctCount = 0;
-        const questions = lesson.quiz || [];
+        const questions = topic.practiceQuestions || [];
         questions.forEach((q, idx) => {
             if (answers[idx] === q.correctAnswer) correctCount++;
         });
@@ -117,33 +146,13 @@ exports.submitTopicTest = async (req, res) => {
         const progress = await UserProgress.findOneAndUpdate(
             { userId, courseId },
             {
-                $addToSet: { completedLessons: passed ? topicId : undefined },
+                $addToSet: { completedTopics: passed ? topicId : undefined },
             },
             { new: true, upsert: true }
         );
 
-        // Unlock next topic logic
         if (passed) {
-            // Find next lesson in the same module
-            let nextLesson = await Lesson.findOne({
-                moduleId: lesson.moduleId._id,
-                order: { $gt: lesson.order }
-            }).sort({ order: 1 });
-
-            // If no next lesson in module, find first lesson of next module
-            if (!nextLesson) {
-                const nextModule = await Module.findOne({
-                    courseId: courseId,
-                    order: { $gt: lesson.moduleId.order }
-                }).sort({ order: 1 });
-
-                if (nextModule) {
-                    nextLesson = await Lesson.findOne({ moduleId: nextModule._id }).sort({ order: 1 });
-                }
-            }
-
-            // In a more advanced system, we'd use TopicProgress model to set 'available'
-            // For now, the UI logic can check completedLessons to see if previous is done.
+            updateDailyProgress(userId, { type: 'quiz' });
         }
 
         res.json({

@@ -1,9 +1,21 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-export function Card({ children, className = "", noPadding = false }) {
+export function Card({ children, className = "", noPadding = false, variant = "default", interactive = false }) {
+  const variants = {
+    default: "bg-white border border-surface-200",
+    glass: "glass-panel",
+    premium: "bg-white shadow-premium border-none relative overflow-hidden",
+    outline: "bg-transparent border-2 border-surface-200",
+    surface: "bg-surface-50 border border-surface-200",
+  };
+
+  const baseClasses = "rounded-3xl transition-all duration-300";
+  const interactiveClasses = interactive ? "interactive-hover" : "";
+  const variantClass = variants[variant] || variants.default;
+
   return (
-    <div className={`bg-white rounded-md shadow-premium transition-all duration-300 hover:shadow-premium-hover ${noPadding ? "" : "p-6"} ${className}`}>
+    <div className={`${baseClasses} ${variantClass} ${interactiveClasses} ${noPadding ? "" : "p-6 md:p-8"} ${className}`}>
       {children}
     </div>
   );
@@ -14,7 +26,7 @@ export function CardHeader({ children, className = "" }) {
 }
 
 export function CardTitle({ children, className = "" }) {
-  return <h3 className={`text-lg font-bold text-neutral-900 ${className}`}>{children}</h3>;
+  return <h3 className={`text-xl font-bold text-surface-900 tracking-tight ${className}`}>{children}</h3>;
 }
 
 export function CardContent({ children, className = "" }) {

@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 const QuizAttempt = require('../models/QuizAttempt');
 const Roadmap = require('../models/Roadmap');
 const User = require('../models/User');
+const DailyProgress = require('../models/DailyProgress');
+const StudentPerformance = require('../models/StudentPerformance');
+const Course = require('../models/Course');
 
 /* ==============================
    GET /api/analytics/overview
@@ -26,82 +29,70 @@ exports.getOverview = async (req, res) => {
             // but for aggregate we need the object. We'll fallback to dummy score.
         }
 
-        // 1. Quiz Stats
-        const totalQuizzes = await QuizAttempt.countDocuments({
-            userId,
-            status: 'completed'
-        }).catch(err => { console.error("Error counting quizzes:", err); return 0; });
+        // 1. Unified Quiz Stats & Streak
+        const [quizStats, roadmaps] = await Promise.all([
+            QuizAttempt.aggregate([
+                { $match: { userId: userObjectId, status: 'completed' } },
+                {
+                    $facet: {
+                        overall: [
+                            { $group: { _id: null, total: { $sum: 1 }, avgScore: { $avg: '$score' } } }
+                        ],
+                        activity: [
+                            { $sort: { submittedAt: -1 } },
+                            { $limit: 100 }, // Look at last 100 entries for trend/activity
+                            {
+                                $group: {
+                                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$submittedAt" } },
+                                    count: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        lastAttempt: [
+                            { $sort: { submittedAt: -1 } },
+                            { $limit: 1 },
+                            { $project: { submittedAt: 1 } }
+                        ]
+                    }
+                }
+            ]),
+            Roadmap.find({ userId })
+        ]);
 
-        let avgScore = 0;
-        if (userObjectId) {
-            try {
-                const avgScoreResult = await QuizAttempt.aggregate([
-                    { $match: { userId: userObjectId, status: 'completed' } },
-                    { $group: { _id: null, avg: { $avg: '$score' } } }
-                ]);
-                avgScore = (avgScoreResult[0] && typeof avgScoreResult[0].avg === 'number') ? Math.round(avgScoreResult[0].avg) : 0;
-            } catch (err) {
-                console.error("❌ Aggregation error:", err);
-            }
-        }
+        const stats = quizStats[0].overall[0] || { total: 0, avgScore: 0 };
+        const totalQuizzes = stats.total;
+        const avgScore = Math.round(stats.avgScore || 0);
 
         // 2. Roadmap Progress
         let totalSteps = 0;
         let completedSteps = 0;
-        let progressPercent = 0;
-        try {
-            const roadmaps = await Roadmap.find({ userId });
-            roadmaps.forEach(map => {
-                if (map.steps && map.steps.length > 0) {
-                    totalSteps += map.steps.length;
-                    completedSteps += map.steps.filter(s => s.completed).length;
-                }
-            });
-            progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
-        } catch (err) {
-            console.error("Error fetching roadmaps:", err);
-        }
+        roadmaps.forEach(map => {
+            if (map.steps) {
+                totalSteps += map.steps.length;
+                completedSteps += map.steps.filter(s => s.completed).length;
+            }
+        });
+        const progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-        // 3. Streak Calculation
+        // 3. Streak Calculation (Simpler)
         let streak = 0;
-        try {
-            const attempts = await QuizAttempt.find({ userId, status: 'completed' })
-                .sort({ submittedAt: -1 })
-                .select('submittedAt');
-
-            const lastActive = attempts.length > 0 ? attempts[0].submittedAt : null;
-            if (lastActive) {
-                const hoursSinceLast = (new Date() - new Date(lastActive)) / (1000 * 60 * 60);
-                if (hoursSinceLast < 48) {
-                    streak = 1;
-                }
-            }
-        } catch (err) {
-            console.error("Error calculating streak:", err);
+        const lastActive = quizStats[0].lastAttempt[0]?.submittedAt;
+        if (lastActive) {
+            const diffDays = (new Date() - new Date(lastActive)) / (1000 * 60 * 60 * 24);
+            if (diffDays < 2) streak = 1; // Simplified streak check
         }
 
-        // 4. Activity Data (Last 7 Days)
+        // 4. Map Activity Data (7 days)
+        const activityMap = {};
+        quizStats[0].activity.forEach(a => activityMap[a._id] = a.count);
+
         const activityData = [];
-        try {
-            const today = new Date();
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                date.setHours(0, 0, 0, 0);
-
-                const nextDate = new Date(date);
-                nextDate.setDate(date.getDate() + 1);
-
-                const count = await QuizAttempt.countDocuments({
-                    userId,
-                    submittedAt: { $gte: date, $lt: nextDate },
-                    status: 'completed'
-                });
-                activityData.push(Math.min(count * 20, 100));
-            }
-        } catch (err) {
-            console.error("Error calculating activity data:", err);
-            while (activityData.length < 7) activityData.push(0);
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            activityData.push(Math.min((activityMap[dateStr] || 0) * 20, 100));
         }
 
         res.json({
@@ -111,7 +102,7 @@ exports.getOverview = async (req, res) => {
             streak,
             completedSteps,
             totalSteps,
-            completedCourses: 0,
+            completedCourses: roadmaps.length,
             hoursSpent: 0,
             activityData
         });
@@ -141,6 +132,36 @@ exports.getQuizPerformance = async (req, res) => {
         const data = attempts.map((a, i) => ({
             label: a.submittedAt.toLocaleDateString(),
             score: a.score
+        }));
+
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+/* ==============================
+   GET /api/analytics/progress (Daily Completion %)
+   ============================== */
+exports.getProgress = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+        const progress = await DailyProgress.find({
+            userId,
+            date: { $gte: last30Days }
+        }).sort({ date: 1 }).lean();
+
+        // Fill in missing days with 0 (or previous value? 0 is safer for daily activity)
+        // If "Completion %" is cumulative, we should take the last knonwn.
+        // If it's "Daily Efficiency", it's distinct.
+        // User asked "How user improves daily/weekly". This implies cumulative or trend.
+        // Let's return the raw daily snapshots.
+
+        const data = progress.map(p => ({
+            date: p.date.toLocaleDateString(),
+            value: p.completionPercentage || 0
         }));
 
         res.json(data);
@@ -243,6 +264,43 @@ exports.getStudyTime = async (req, res) => {
 
         res.json(activity.map(a => ({ day: a.day, hours: Number(a.hours.toFixed(2)) })));
     } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+/* ==============================
+   GET /api/analytics/detailed-performance
+   ============================== */
+exports.getDetailedPerformance = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        let performance = await StudentPerformance.findOne({ userId });
+
+        if (!performance) {
+            // Lazy update if record doesn't exist but user has activity
+            const { updateStudentPerformance } = require('../utils/analyticsHelper');
+            await updateStudentPerformance(userId);
+            performance = await StudentPerformance.findOne({ userId });
+        }
+
+        if (!performance) {
+            return res.json({
+                overallStats: {
+                    totalQuizzesTaken: 0,
+                    averageScore: 0,
+                    overallAccuracy: 0,
+                    totalTimeSpent: 0,
+                    completionPercentage: 0
+                },
+                coursePerformance: [],
+                topicMastery: [],
+                performanceHistory: [],
+                suggestions: ["Start your first quiz to see your performance metrics here!"]
+            });
+        }
+
+        res.json(performance);
+    } catch (err) {
+        console.error("Detailed Analytics Error:", err);
         res.status(500).json({ message: err.message });
     }
 };

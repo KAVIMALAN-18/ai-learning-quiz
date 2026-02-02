@@ -13,13 +13,14 @@ import LoadingSpinner from "../components/ui/LoadingSpinner";
 const DashboardOverview = lazy(() => import("../pages/dashboard/DashboardOverview"));
 const DashboardCourses = lazy(() => import("../pages/dashboard/DashboardCourses"));
 const DashboardProgress = lazy(() => import("../pages/dashboard/DashboardProgress"));
-const DashboardAnalytics = lazy(() => import("../pages/dashboard/DashboardAnalytics"));
+const DashboardAnalytics = lazy(() => import("../pages/analytics/AnalyticsDashboard"));
 const DashboardGoals = lazy(() => import("../pages/dashboard/DashboardGoals"));
 const DashboardRoadmap = lazy(() => import("../pages/dashboard/DashboardRoadmap"));
 const DashboardChat = lazy(() => import("../pages/dashboard/DashboardChat"));
 const RecommendationPage = lazy(() => import("../pages/dashboard/RecommendationPage"));
 const QuizOverview = lazy(() => import("../pages/quiz/QuizOverview"));
 const QuizStart = lazy(() => import("../pages/quiz/QuizStart"));
+const TopicTestPage = lazy(() => import("../pages/quiz/TopicTestPage"));
 const QuizAttempt = lazy(() => import("../pages/quiz/QuizAttempt"));
 const QuizResult = lazy(() => import("../pages/quiz/QuizResult"));
 const QuizHistory = lazy(() => import("../pages/quiz/QuizHistory"));
@@ -28,20 +29,8 @@ const AdminQuizBuilder = lazy(() => import("../pages/admin/AdminQuizBuilder"));
 const AdminOverview = lazy(() => import("../pages/admin/AdminOverview"));
 const AdminCourseManagement = lazy(() => import("../pages/admin/AdminCourseManagement"));
 const CoursePlayerPage = lazy(() => import("../pages/course/CoursePlayerPage"));
-
-const JobBoard = lazy(() => import("../pages/jobs/JobBoard"));
-const RecruiterDashboard = lazy(() => import("../pages/jobs/RecruiterDashboard"));
-const ApplicationTracker = lazy(() => import("../pages/jobs/ApplicationTracker"));
-const CareerDashboard = lazy(() => import("../pages/career/CareerDashboard"));
-const JobReadinessDashboard = lazy(() => import("../pages/career/JobReadinessDashboard"));
-const MockInterview = lazy(() => import("../pages/career/MockInterview"));
-const PlacementTracker = lazy(() => import("../pages/career/PlacementTracker"));
 const UserManagement = lazy(() => import("../pages/admin/UserManagement"));
-const MyCertificates = lazy(() => import("../pages/certificates/MyCertificates"));
-const VerifyCertificate = lazy(() => import("../pages/certificates/VerifyCertificate"));
 const Settings = lazy(() => import("../pages/settings/Settings"));
-const ResumeBuilder = lazy(() => import("../pages/career/ResumeBuilder"));
-const Leaderboard = lazy(() => import("../pages/career/Leaderboard"));
 const AdminRoadmapManagement = lazy(() => import("../pages/admin/AdminRoadmapManagement"));
 
 import { useAuth } from "../context/useAuth";
@@ -60,7 +49,6 @@ export default function AppRoutes() {
         {/* 🔓 Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
 
         {/* 🔒 Protected User Dashboard Routes */}
         <Route
@@ -82,6 +70,7 @@ export default function AppRoutes() {
           <Route path="quizzes">
             <Route index element={<QuizOverview />} />
             <Route path="start" element={<QuizStart />} />
+            <Route path="topic-test" element={<TopicTestPage />} />
             <Route path="attempt/:id" element={<QuizAttempt />} />
             <Route path="result/:id" element={<QuizResult />} />
             <Route path="history" element={<QuizHistory />} />
@@ -95,11 +84,8 @@ export default function AppRoutes() {
           <Route path="analytics" element={<DashboardAnalytics />} />
           <Route path="goals" element={<DashboardGoals />} />
 
-          {/* 💼 Career & Results */}
-          <Route path="results" element={<QuizHistory />} />
           <Route path="profile" element={<Settings />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="certificates" element={<MyCertificates />} />
 
           {/* 🛡️ Admin-Only Routes */}
           <Route

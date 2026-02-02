@@ -13,6 +13,7 @@ const quizRoutes = require("./routes/quiz");
 const helmet = require("helmet");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
+const mongoSanitize = require("express-mongo-sanitize");
 
 
 const { requestLogger, errorLogger } = require("./middleware/logger");
@@ -62,8 +63,16 @@ const limiter = rateLimit({
 });
 app.use("/api/", limiter);
 
+// Trust proxy for Render/Railway/Vercel
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 // Body parser
 app.use(express.json());
+
+// Sanitize data against NoSQL injection
+// app.use(mongoSanitize()); // Disabled: Conflicts with Express 5 read-only req.query
 
 /* =========================
    ✅ ROUTES
@@ -97,6 +106,9 @@ app.use("/api/analytics", analyticsRoutes);
 
 const courseRoutes = require("./routes/course.routes");
 app.use("/api/courses", courseRoutes);
+
+const aiRoutes = require("./routes/ai");
+app.use("/api/ai", aiRoutes);
 
 const careerRoutes = require("./routes/career.routes");
 app.use("/api/career", careerRoutes);
@@ -135,6 +147,19 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected successfully");
+
+    // Auto-seed if catalog is empty
+    const Course = require('./models/Course');
+    const seedLearningSystem = require('./scripts/seedLearningSystem');
+
+    Course.countDocuments().then(count => {
+      if (count === 0) {
+        console.log("ℹ️ Course catalog is empty. Running auto-seeding...");
+        seedLearningSystem().then(() => {
+          console.log("✅ Auto-seeding finished.");
+        });
+      }
+    });
 
     app.listen(PORT, () => {
       console.log(`🚀 Server listening on port ${PORT}`);

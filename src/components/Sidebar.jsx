@@ -22,11 +22,10 @@ import { MetaText } from "./ui/Typography";
 
 const MAIN_NAV = [
   { to: "/dashboard/overview", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard/courses", label: "My Courses", icon: BookOpen },
-  { to: "/dashboard/roadmap", label: "Roadmap", icon: Map },
-  { to: "/dashboard/quizzes", label: "Quizzes", icon: Layers },
+  { to: "/dashboard/courses", label: "Browse Courses", icon: BookOpen },
+  { to: "/dashboard/roadmap", label: "Learning Roadmap", icon: Map },
+  { to: "/dashboard/quizzes", label: "Assessments", icon: Layers },
   { to: "/dashboard/chat", label: "AI Tutor", icon: MessageCircle },
-  { to: "/dashboard/results", label: "Results", icon: Award },
 ];
 
 const SETTINGS_NAV = [

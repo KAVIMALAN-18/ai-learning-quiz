@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dashboardService from "../services/dashboard.service";
 import quizService from "../services/quiz.service";
 import analyticsService from "../services/analytics.service";
@@ -22,8 +22,14 @@ export const useDashboardData = () => {
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const lastFetchRef = useRef(0);
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (force = false) => {
+        const now = Date.now();
+        // Prevent re-fetching within 1.5 seconds unless forced (resolves StrictMode and re-render noise)
+        if (!force && (now - lastFetchRef.current < 1500)) return;
+        lastFetchRef.current = now;
+
         setIsLoading(true);
         setError(null);
         try {
@@ -118,5 +124,5 @@ export const useDashboardData = () => {
         fetchDashboardData();
     }, []);
 
-    return { ...data, isLoading, error, refresh: fetchDashboardData };
+    return { ...data, isLoading, error, refresh: (force = true) => fetchDashboardData(force) };
 };

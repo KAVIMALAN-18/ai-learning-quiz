@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../services/api.client";
 import { AuthContext } from "./AuthContext";
 
@@ -7,12 +7,16 @@ export default function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const lastSyncRef = useRef(0);
 
   /* =========================
      ✅ SYNC USER PROFILE ON LOAD
      ========================= */
   useEffect(() => {
     if (token) {
+      const now = Date.now();
+      if (now - lastSyncRef.current < 1000) return;
+      lastSyncRef.current = now;
       fetchProfile();
     } else {
       setUser(null);

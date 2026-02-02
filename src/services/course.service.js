@@ -9,12 +9,16 @@ const courseService = {
         const res = await apiClient.get(`/courses/${slug}`);
         return res.data;
     },
-    getLesson: async (lessonId) => {
-        const res = await apiClient.get(`/courses/lessons/${lessonId}`);
+    getTopic: async (topicId) => {
+        const res = await apiClient.get(`/courses/topics/${topicId}`);
         return res.data;
     },
-    completeLesson: async (courseId, lessonId) => {
-        const res = await apiClient.post("/courses/complete-lesson", { courseId, lessonId });
+    completeTopic: async (courseId, topicId) => {
+        const res = await apiClient.post("/courses/complete-topic", { courseId, topicId });
+        return res.data;
+    },
+    submitTopicTest: async (courseId, topicId, answers) => {
+        const res = await apiClient.post("/courses/submit-topic-test", { courseId, topicId, answers });
         return res.data;
     }
 };

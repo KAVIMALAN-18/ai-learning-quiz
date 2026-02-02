@@ -96,12 +96,15 @@ The AI Learning Platform is a sophisticated educational application designed to 
    ```
 
 ## Deployment
-This application is configured for deployment on Vercel (Frontend) and Render/Railway (Backend). Ensure all production environment variables are configured in the respective hosting dashboards.
+This application is configured for production deployment. For a detailed step-by-step guide on how to deploy this platform to Vercel, Render, and MongoDB Atlas, please refer to the [**Deployment Guide**](DEPLOYMENT.md).
 
-## Future Enhancements
-- Integration of collaborative learning features and peer-to-peer discussions.
-- Expansion of the AI tutoring capabilities using RAG (Retrieval-Augmented Generation).
-- Advanced analytics for predictive learning outcome modeling.
+## Smart Learning Assistant (AI)
+The platform features an integrated AI-powered recommendation system that:
+- **Analyzes Performance**: Tracks quiz scores, accuracy history, and time spent.
+- **Identifies Readiness**: Detects mastery levels (Novice to Expert) for specific technical topics.
+- **Calculates Learning Velocity**: Measures your progress speed and performance trends.
+- **Predicts Learning Gaps**: Suggests foundational topics if performance declines in advanced areas.
+- **Generates Personalized Paths**: Creates multi-phase study plans with specific actions and estimated timeframes.
 
 ## License
 Distributed under the MIT License.

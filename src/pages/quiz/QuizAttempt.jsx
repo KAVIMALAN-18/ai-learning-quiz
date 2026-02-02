@@ -7,7 +7,8 @@ import Button from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Title, MetaText } from '../../components/ui/Typography';
 import Container from '../../components/ui/Container';
-import { Clock, AlertCircle, X, LayoutGrid, CheckCircle2, ChevronLeft, ChevronRight, Rocket } from 'lucide-react';
+import { Clock, AlertCircle, X, LayoutGrid, CheckCircle2, ChevronLeft, ChevronRight, Rocket, Zap, Target, Bookmark } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Imported Components
 import SubmitConfirmationModal from '../../components/quiz-attempt/SubmitConfirmationModal';
@@ -193,21 +194,24 @@ export default function QuizAttempt() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-        <LoadingSpinner />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-mesh">
+        <LoadingSpinner size={64} />
+        <p className="mt-8 text-neutral-400 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Synchronizing Assessment Data...</p>
       </div>
     );
   }
 
   if (!user || error || !quiz) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-        <Card className="max-w-md p-8 text-center animate-scale-in">
-          <AlertCircle size={48} className="mx-auto text-error mb-4" />
-          <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-          <p className="text-neutral-500 mb-6">{error || 'Quiz session not found'}</p>
-          <Button onClick={() => navigate('/dashboard/quizzes')} fullWidth>
-            Return to Dashboard
+      <div className="min-h-screen flex items-center justify-center bg-mesh">
+        <Card variant="glass" className="max-w-md p-12 text-center animate-scale-in">
+          <div className="w-20 h-20 bg-error-50 rounded-3xl flex items-center justify-center text-error-500 mx-auto mb-8 border border-error-100">
+            <AlertCircle size={40} />
+          </div>
+          <h2 className="text-2xl font-black mb-4 tracking-tight">Session Interrupted</h2>
+          <p className="text-neutral-500 mb-10 font-medium leading-relaxed">{error || 'Your assessment session could not be established. Please re-authenticate and try again.'}</p>
+          <Button variant="primary" onClick={() => navigate('/dashboard/quizzes')} fullWidth className="py-4 font-black">
+            RETURN TO DASHBOARD
           </Button>
         </Card>
       </div>
@@ -215,171 +219,251 @@ export default function QuizAttempt() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col font-sans text-neutral-900" ref={topRef}>
-      {/* HEADER: Production Grade Distraction Free */}
-      <header className="bg-white border-b border-neutral-200 fixed top-0 inset-x-0 z-40 h-16 flex items-center shadow-sm">
-        <Container className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
+    <div className="h-screen bg-surface-50 flex flex-col font-sans text-surface-900 overflow-hidden" ref={topRef}>
+      {/* 1. ASSESSMENT TOOLBAR (DISTRACTION FREE) */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-surface-200 z-40 h-20 flex-shrink-0 flex items-center shadow-sm px-8">
+        <div className="max-w-[1700px] mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-6 flex-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => { if (window.confirm('Quit exam? Progress will be lost.')) navigate('/dashboard/quizzes'); }}
-              className="text-neutral-500 hover:text-error font-medium"
+              className="text-surface-500 hover:text-red-600 font-black px-4 py-2 rounded-xl transition-all uppercase tracking-widest text-[10px]"
             >
-              <X size={18} className="mr-2" /> <span className="hidden md:inline">Exit Exam</span>
+              <X size={16} className="mr-2" /> QUIT SESSION
             </Button>
-            <div className="hidden lg:block h-6 w-px bg-neutral-200 mx-2" />
-            <span className="hidden lg:block font-bold text-neutral-800 truncate max-w-[240px]">
-              {quiz.title}
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center justify-center flex-1">
-            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-md font-mono font-bold text-base tabular-nums border transition-all ${timerWarning
-                ? 'bg-error/10 text-error border-error/20 animate-pulse ring-2 ring-error/5'
-                : 'bg-neutral-100 text-neutral-700 border-neutral-200'
-              }`}>
-              <Clock size={16} />
-              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-            </div>
-          </div>
-
-          <div className="flex justify-end items-center gap-4 flex-1">
-            <div className="text-right hidden sm:block">
-              <MetaText className="uppercase font-bold tracking-wider">Overall Progress</MetaText>
-              <div className="text-sm font-bold text-primary-600">
-                Question {current + 1} <span className="text-neutral-300">/</span> {total}
+            <div className="h-8 w-[1px] bg-surface-200" />
+            <div className="hidden lg:block">
+              <span className="text-[10px] font-black uppercase text-surface-400 block tracking-widest leading-none mb-1">Module Validation</span>
+              <div className="font-black text-surface-900 tracking-tight text-sm uppercase">
+                {quiz.title}
               </div>
             </div>
           </div>
-        </Container>
-        {/* Progress Bar Top */}
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-neutral-100">
-          <div
-            className="h-full bg-primary-600 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(79,70,229,0.4)]"
-            style={{ width: `${((current + 1) / total) * 100}%` }}
+
+          <div className="flex flex-col items-center justify-center flex-1">
+            <motion.div
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className={`flex items-center gap-3 px-6 py-2.5 rounded-2xl font-mono font-black text-2xl tabular-nums shadow-xl transition-all ${timerWarning
+                ? 'bg-red-600 text-white shadow-red-600/20'
+                : 'bg-slate-900 text-white shadow-slate-900/10'
+                }`}>
+              <Clock size={20} className={timerWarning ? 'animate-pulse' : ''} />
+              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+            </motion.div>
+          </div>
+
+          <div className="flex justify-end items-center gap-6 flex-1">
+            <div className="text-right hidden sm:block">
+              <span className="text-[10px] font-black uppercase text-surface-400 block tracking-widest leading-none mb-1">Intelligence Quotient</span>
+              <div className="text-sm font-black text-primary-600 tracking-tight uppercase">
+                Step {current + 1} <span className="text-surface-300">/</span> {total}
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-surface-100/50 border border-surface-200 flex items-center justify-center text-primary-600">
+              <Target size={20} />
+            </div>
+          </div>
+        </div>
+        {/* TOP PROGRESS LINE */}
+        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-surface-100">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${((current + 1) / total) * 100}%` }}
+            className="h-full bg-primary-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]"
           />
         </div>
       </header>
 
-      {/* WARNING BANNER */}
+      {/* 2. WARNING SYSTEM */}
       <UnansweredWarningBanner count={unansweredCount} />
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 pt-24 pb-28">
-        <Container className="flex flex-col md:flex-row gap-8">
-
-          {/* LEFT: Question Content */}
-          <div className="flex-1 min-w-0">
-            <Card className="p-8 md:p-12 border-none shadow-premium min-h-[520px] flex flex-col relative animate-slide-up">
-              <div className="mb-8">
-                <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-neutral-100 text-neutral-600 text-[11px] font-bold uppercase tracking-widest border border-neutral-200">
-                  Question {current + 1}
-                </span>
-              </div>
-
-              <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 leading-tight mb-12">
-                {currentQuestion.question}
-              </h2>
-
-              <div className="space-y-4">
-                {currentQuestion.options.map((opt, idx) => {
-                  const isSelected = answers[current] === idx;
-                  const letter = String.fromCharCode(65 + idx);
-
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => selectAnswer(idx)}
-                      className={`w-full group text-left cursor-pointer p-5 rounded-md border-2 transition-all duration-200 flex items-center gap-5 ${isSelected
-                          ? 'border-primary-600 bg-primary-50/50 shadow-md ring-4 ring-primary-500/5'
-                          : 'border-neutral-100 bg-white hover:border-neutral-300 hover:bg-neutral-50 active:scale-[0.99]'
-                        }`}
-                    >
-                      <div className={`w-9 h-9 rounded-md border flex items-center justify-center flex-shrink-0 transition-all font-bold text-sm ${isSelected
-                          ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-                          : 'border-neutral-200 text-neutral-400 group-hover:border-neutral-400 group-hover:text-neutral-600'
-                        }`}>
-                        {letter}
-                      </div>
-                      <span className={`text-lg font-medium ${isSelected ? 'text-primary-900' : 'text-neutral-700'}`}>
-                        {opt}
-                      </span>
-                      {isSelected && <CheckCircle2 size={24} className="ml-auto text-primary-600 animate-fade-in" />}
-                    </button>
-                  )
-                })}
-              </div>
-            </Card>
-          </div>
-
-          {/* RIGHT SIDEBAR: Palette & Info */}
-          <div className="hidden lg:block w-[280px] shrink-0">
-            <div className="sticky top-24 space-y-6">
-              <Card className="p-6 border-none shadow-premium">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-neutral-800 flex items-center gap-2">
-                    <LayoutGrid size={18} className="text-neutral-400" /> Question Map
-                  </h3>
+      {/* 3. MAIN WORKBENCH (ASSESSMENT VIEW) */}
+      <div className="flex-1 overflow-hidden relative flex">
+        {/* LEFT: Question Canvas */}
+        <main className="flex-1 overflow-y-auto px-8 lg:px-24 py-16 md:py-24 bg-surface-50 scroll-smooth">
+          <div className="max-w-3xl mx-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={current}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <div className="mb-10 flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-primary-50 text-primary-600 text-[10px] font-black uppercase tracking-widest">
+                    Question Segment 0{current + 1}
+                  </div>
+                  <div className="flex items-center gap-2 text-surface-400 text-[10px] font-black uppercase tracking-widest">
+                    <Zap size={14} className="text-amber-500" /> +{currentQuestion.marks} Skill Points
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-3 mb-6">
-                  {Array.from({ length: total }).map((_, i) => {
-                    const isCurrent = i === current;
-                    const isAns = answers[i] !== undefined;
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-surface-900 leading-[1.15] mb-12 tracking-tight">
+                  {currentQuestion.question}
+                </h2>
 
-                    let btnClass = "bg-neutral-100 text-neutral-400 hover:bg-neutral-200 border-transparent";
-                    if (isAns) btnClass = "bg-primary-50 text-primary-600 font-bold border-primary-100";
-                    if (isCurrent) btnClass = "bg-primary-600 text-white font-bold ring-4 ring-primary-500/20 shadow-md transform scale-110 border-transparent pointer-events-none";
+                <div className="grid grid-cols-1 gap-4">
+                  {currentQuestion.options.map((opt, idx) => {
+                    const isSelected = answers[current] === idx;
+                    const letter = String.fromCharCode(65 + idx);
 
                     return (
-                      <button
-                        key={i}
-                        onClick={() => goto(i)}
-                        className={`h-10 w-10 rounded-md text-xs flex items-center justify-center transition-all border ${btnClass}`}
+                      <motion.button
+                        layout
+                        key={idx}
+                        onClick={() => selectAnswer(idx)}
+                        whileHover={{ x: 8 }}
+                        whileTap={{ scale: 0.99 }}
+                        className={`w-full group text-left p-6 md:p-8 rounded-[2rem] border-2 transition-all duration-300 flex items-center gap-6 ${isSelected
+                          ? 'border-primary-600 bg-white shadow-premium ring-4 ring-primary-500/5'
+                          : 'border-surface-200 bg-white hover:border-primary-200 hover:shadow-md'
+                          }`}
                       >
-                        {i + 1}
-                      </button>
-                    );
+                        <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center flex-shrink-0 font-black text-lg transition-all ${isSelected
+                          ? 'border-primary-600 bg-primary-600 text-white shadow-lg'
+                          : 'border-surface-100 bg-surface-50 text-surface-400 group-hover:bg-primary-50 group-hover:text-primary-600 group-hover:border-primary-200'
+                          }`}>
+                          {letter}
+                        </div>
+                        <span className={`text-lg md:text-xl font-bold leading-snug transition-colors ${isSelected ? 'text-primary-900' : 'text-surface-600 group-hover:text-surface-900'}`}>
+                          {opt}
+                        </span>
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="ml-auto w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 shrink-0"
+                          >
+                            <CheckCircle2 size={18} strokeWidth={3} />
+                          </motion.div>
+                        )}
+                      </motion.button>
+                    )
                   })}
                 </div>
 
-                <div className="pt-4 border-t border-neutral-100 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-neutral-500">
-                    <span>Answered:</span>
-                    <span className="font-bold text-neutral-900">{answeredCount}/{total}</span>
+                {/* QUICK ACTIONS */}
+                <div className="mt-12 pt-12 border-t border-surface-200 flex items-center justify-between">
+                  <div className="flex gap-4">
+                    <button className="flex items-center gap-2 text-[10px] font-black text-surface-400 uppercase tracking-widest hover:text-primary-600 transition-colors">
+                      <Bookmark size={14} /> Mark for revisit
+                    </button>
                   </div>
-                  <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-success transition-all duration-300" style={{ width: `${(answeredCount / total) * 100}%` }} />
+                  <div className="text-[10px] font-black uppercase text-surface-400 tracking-widest">
+                    Changes synced to cloud
                   </div>
                 </div>
-              </Card>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
 
-              {/* Tips Card */}
-              <div className="p-5 bg-neutral-900 rounded-md text-white shadow-xl">
-                <p className="text-xs font-bold text-neutral-500 uppercase mb-3">Quick Shortcut</p>
-                <p className="text-sm leading-relaxed text-neutral-300">
-                  Use <kbd className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700 text-white inline-block mx-0.5">←</kbd> and
-                  <kbd className="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700 text-white inline-block mx-0.5">→</kbd> keys for fast navigation between questions.
-                </p>
+        {/* RIGHT: NAVIGATION PANEL (GLASS) */}
+        <aside className="hidden xl:flex w-[380px] shrink-0 bg-white border-l border-surface-200 flex-col overflow-hidden">
+          <div className="p-10 flex-1 overflow-y-auto space-y-12">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-surface-400 flex items-center gap-2">
+                  <LayoutGrid size={14} /> Knowledge Map
+                </h3>
+                <Badge variant="surface" className="text-[10px] bg-slate-100 border-none font-black">{answeredCount} OF {total}</Badge>
+              </div>
+
+              <div className="grid grid-cols-5 gap-3">
+                {Array.from({ length: total }).map((_, i) => {
+                  const isCurrent = i === current;
+                  const isAns = answers[i] !== undefined;
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => goto(i)}
+                      className={`h-12 w-full rounded-xl text-xs font-black flex items-center justify-center transition-all ${isCurrent
+                        ? 'bg-slate-900 text-white shadow-xl ring-2 ring-slate-900/10'
+                        : isAns
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-surface-50 text-surface-400 hover:bg-surface-100 border border-surface-200'
+                        }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* PERFORMANCE SNAPSHOT */}
+            <div className="p-8 rounded-3xl bg-surface-50 border border-surface-200 space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase text-surface-400 tracking-widest">Analytics Snapshot</span>
+                <Clock size={14} className="text-primary-500" />
+              </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <span className="text-2xl font-black text-surface-900">{Math.round((answeredCount / total) * 100)}%</span>
+                  <span className="text-[10px] font-black text-surface-400 mb-1 uppercase">Complete</span>
+                </div>
+                <div className="h-1.5 w-full bg-surface-100 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(answeredCount / total) * 100}%` }}
+                    className="h-full bg-premium-gradient"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* LEGEND */}
+            <div className="space-y-4 px-2">
+              <span className="text-[9px] font-black uppercase text-surface-400 tracking-widest block mb-4">Keyboard Shortcuts</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-surface-500">
+                  <kbd className="p-1 px-2 rounded bg-surface-100 border border-surface-200">←</kbd> Prev
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-surface-500">
+                  <kbd className="p-1 px-2 rounded bg-surface-100 border border-surface-200">→</kbd> Next
+                </div>
               </div>
             </div>
           </div>
-        </Container>
+
+          <div className="p-8 border-t border-surface-200 bg-surface-50/50">
+            <Button
+              variant="premium"
+              fullWidth
+              className="py-5 rounded-2xl text-base font-black tracking-tight shadow-xl"
+              onClick={() => setShowConfirmModal(true)}
+            >
+              FINALIZE ASSESSMENT
+            </Button>
+          </div>
+        </aside>
       </div>
 
-      {/* FIXED FOOTER NAVIGATION: Consistent & Bold */}
-      <QuizNavigation
-        current={current}
-        total={total}
-        onNext={() => goto(current + 1)}
-        onPrev={() => goto(current - 1)}
-        onSubmit={() => setShowConfirmModal(true)}
-        isAnswered={isAnswered}
-        isLast={isLast}
-      />
+      {/* 4. TACTICAL NAVIGATION BAR (MOBILE + DESKTOP FALLBACK) */}
+      <footer className="fixed bottom-0 inset-x-0 h-24 bg-white/90 backdrop-blur-xl border-t border-surface-200 z-40 px-8 flex items-center justify-center xl:hidden">
+        <div className="w-full max-w-xl flex items-center justify-between">
+          <Button variant="ghost" className="rounded-2xl h-12 w-12 p-0 border border-surface-200" onClick={() => goto(current - 1)}>
+            <ChevronLeft size={20} />
+          </Button>
+          <div className="flex-1 text-center">
+            <span className="text-[10px] font-black uppercase text-surface-400 tracking-widest block mb-1">Index</span>
+            <div className="font-black text-surface-900">{current + 1} <span className="text-surface-300">/</span> {total}</div>
+          </div>
+          <Button
+            variant={isLast ? "premium" : "primary"}
+            className="rounded-2xl px-8 h-12 font-black uppercase tracking-widest text-[10px]"
+            onClick={isLast ? () => setShowConfirmModal(true) : () => goto(current + 1)}
+          >
+            {isLast ? 'Finish' : 'Advance'} <ChevronRight size={16} className="ml-2" />
+          </Button>
+        </div>
+      </footer>
 
-      {/* CONFIRM MODAL */}
+      {/* RENDER MODAL */}
       <SubmitConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}

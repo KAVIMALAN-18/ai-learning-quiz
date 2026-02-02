@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/useAuth";
 import {
   TrendingUp,
@@ -13,53 +14,45 @@ import {
   Calendar,
   Clock,
   BrainCircuit,
-  Rocket
+  Rocket,
+  Sparkles,
+  ArrowUpRight,
+  LayoutDashboard
 } from "lucide-react";
-import { Card } from "../ui/Card";
+import { Card, CardTitle, CardContent } from "../ui/Card";
 import Button from "../ui/Button";
 import { Title, SectionHeader, BodyText, MetaText, Label } from "../ui/Typography";
 import Container from "../ui/Container";
 import Badge from "../ui/Badge";
 import Skeleton from "../ui/Skeleton";
-import ErrorState from "../ui/ErrorState";
-import EmptyState from "../ui/EmptyState";
-
-// New Chart Components
+import { LoadingSpinner } from "../ui/LoadingSpinner";
 import PerformanceChart from '../analytics/PerformanceChart';
 import ProgressDonut from '../analytics/ProgressDonut';
+import LearningAdvisor from '../ai/LearningAdvisor';
 
-// 1. TOP SUMMARY CARD
-const SummaryCard = ({ label, value, subtext, icon: Icon, colorClass, isLoading }) => (
-  <Card className="relative overflow-hidden group h-full transition-all hover:translate-y-[-2px]">
-    <div className={`absolute top-0 left-0 w-1.5 h-full ${colorClass}`} />
-    <div className="flex justify-between items-start">
-      <div className="flex-1">
-        <Label className="mb-1 block">
-          {label}
-        </Label>
-        {isLoading ? (
-          <Skeleton className="h-8 w-24 mb-2" />
-        ) : (
-          <div className="text-3xl font-black text-neutral-900 leading-none">
-            {value}
-          </div>
-        )}
-        {isLoading ? (
-          <Skeleton className="h-3 w-32 mt-2" />
-        ) : subtext && (
-          <p className="text-xs text-neutral-400 mt-2 font-medium flex items-center gap-1">
-            <TrendingUp size={12} className="text-success" /> {subtext}
-          </p>
-        )}
-      </div>
-      <div className="p-3 bg-neutral-50 rounded-lg text-neutral-600 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
-        <Icon size={22} />
-      </div>
-    </div>
-  </Card>
-);
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
 
-/* ------------------ Dashboard ------------------ */
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 100
+    }
+  }
+};
+
 const Dashboard = ({
   stats = [],
   velocity = {},
@@ -71,131 +64,252 @@ const Dashboard = ({
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
+      <Container className="py-12 flex flex-col items-center justify-center min-h-[60vh]">
         <LoadingSpinner size={48} />
-      </div>
+        <p className="mt-4 text-surface-500 font-medium animate-pulse">Personalizing your workspace...</p>
+      </Container>
     );
   }
 
+  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0];
+
   return (
-    <Container className="py-8 space-y-12 animate-fade-in pb-20">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100">
-        <div>
-          <MetaText className="uppercase font-black tracking-[0.3em] text-primary-600 block mb-2">
-            Learning Dashboard
-          </MetaText>
-          <Title className="text-5xl font-black text-slate-900 tracking-tight">Hello, {user?.name?.split(' ')[0] || user?.email?.split('@')[0]}</Title>
-          <BodyText className="mt-4 text-slate-500 max-w-lg text-lg font-medium">
-            Jump back into your curriculum and continue your journey towards mastery.
-          </BodyText>
-        </div>
-        <div className="flex gap-4">
-          <Button variant="primary" className="px-8 py-4 font-black shadow-xl shadow-primary-600/20" onClick={() => navigate('/dashboard/roadmap')}>
-            CONTINUE LEARNING <ArrowRight size={18} className="ml-2" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
-        {/* Left Column - Main Focus */}
-        <div className="lg:col-span-2 space-y-12">
-
-          {/* STATS GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            {stats.slice(0, 2).map((stat, i) => (
-              <Card key={i} className="p-8 border-none bg-white shadow-premium relative overflow-hidden group">
-                <div className={`absolute top-0 left-0 w-full h-1.5 ${stat.colorClass || 'bg-primary-600'}`} />
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 block">{stat.label}</Label>
-                <div className="text-4xl font-black text-slate-900">{stat.value}</div>
-                <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-tight italic">{stat.subtext}</p>
-              </Card>
-            ))}
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-10 pb-20 px-4 md:px-6 lg:px-8 max-w-7xl mx-auto"
+    >
+      {/* 1. WELCOME SECTION */}
+      <motion.section variants={itemVariants} className="relative group">
+        <div className="absolute -inset-1 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-4xl blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+        <Card noPadding className="relative overflow-hidden border-none shadow-2xl bg-slate-950 min-h-[320px] flex items-center">
+          <div className="absolute top-0 right-0 p-12 opacity-5 animate-float pointer-events-none">
+            <BrainCircuit size={400} />
           </div>
 
-          {/* RECENT ASSESSMENTS */}
-          <Card className="p-0 border-none shadow-premium overflow-hidden bg-white">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-              <SectionHeader className="m-0 text-xl font-black text-slate-900">Recent Assessments</SectionHeader>
-              <Button variant="ghost" size="sm" className="text-primary-600 font-bold" onClick={() => navigate("/dashboard/quizzes")}>View All</Button>
+          <div className="relative z-10 w-full p-8 md:p-14 flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="max-w-xl text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-6">
+                <Sparkles size={14} className="text-secondary-400" />
+                <span className="text-[10px] uppercase tracking-widest font-bold text-white/70">Learning Workspace</span>
+              </div>
+              <h1 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
+                Welcome back, <br />
+                <span className="text-gradient from-primary-400 to-secondary-400">{firstName}</span>
+              </h1>
+              <p className="text-slate-400 text-lg font-medium mb-10 max-w-sm leading-relaxed">
+                You've completed <span className="text-white font-bold">85%</span> of your weekly progress. Ready to dive back in?
+              </p>
+              <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                <Button
+                  variant="premium"
+                  size="lg"
+                  className="rounded-2xl"
+                  onClick={() => navigate('/dashboard/roadmap')}
+                >
+                  Resume Learning <ArrowRight size={18} className="ml-2" />
+                </Button>
+                <Button
+                  variant="glass"
+                  size="lg"
+                  className="rounded-2xl border-white/10 text-white"
+                  onClick={() => navigate('/dashboard/quizzes')}
+                >
+                  Quick Practice
+                </Button>
+              </div>
             </div>
-            <div className="divide-y divide-slate-50">
-              {isLoading ? (
-                Array(2).fill(0).map((_, i) => <div key={i} className="p-8"><Skeleton className="h-20 w-full" /></div>)
-              ) : recentQuizzes.length > 0 ? (
+
+            <div className="hidden lg:block bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 w-64 text-center">
+              <div className="relative inline-block mb-4">
+                <ProgressDonut data={charts.roadmapData} size={120} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-white">{velocity.mastery}%</span>
+                </div>
+              </div>
+              <p className="text-white/60 text-xs font-bold uppercase tracking-widest mt-2">Overall Mastery</p>
+            </div>
+          </div>
+        </Card>
+      </motion.section>
+
+      {/* 2. STATS GRID */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, i) => (
+          <Card key={i} variant="glass" interactive className="p-6 relative overflow-hidden group">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-2xl bg-surface-100 text-surface-600 transition-colors group-hover:bg-primary-600 group-hover:text-white">
+                {stat.label.includes('Courses') ? <BookOpen size={20} /> :
+                  stat.label.includes('Quizzes') ? <CheckCircle2 size={20} /> :
+                    stat.label.includes('Score') ? <Trophy size={20} /> : <Zap size={20} />}
+              </div>
+              <ArrowUpRight size={16} className="text-surface-300 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+            </div>
+            <p className="text-xs font-bold text-surface-500 uppercase tracking-widest mb-1">{stat.label}</p>
+            <div className="text-2xl font-black text-surface-900">{stat.value}</div>
+            <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-primary-600 bg-primary-50 w-fit px-2 py-0.5 rounded-full">
+              <TrendingUp size={10} /> {stat.subtext}
+            </div>
+          </Card>
+        ))}
+      </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+        {/* 3. MAIN CONTENT (Left) */}
+        <div className="lg:col-span-2 space-y-10">
+          {/* PERFORMANCE OVERVIEW */}
+          <motion.section variants={itemVariants}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary-50 text-secondary-600 rounded-xl">
+                  <LayoutDashboard size={20} />
+                </div>
+                <h2 className="text-2xl font-black text-surface-900 tracking-tight">Performance Summary</h2>
+              </div>
+              <Button variant="ghost" size="sm" className="text-primary-600">Analyze More</Button>
+            </div>
+
+            <Card variant="default" className="p-8">
+              <div className="h-[300px]">
+                <PerformanceChart data={charts.performance} />
+              </div>
+              <div className="mt-8 flex flex-wrap gap-8 justify-center items-center border-t border-surface-100 pt-8">
+                <div className="text-center">
+                  <p className="text-xs font-bold text-surface-400 uppercase mb-1">Weekly Growth</p>
+                  <p className="text-xl font-black text-surface-900">+12%</p>
+                </div>
+                <div className="w-px h-8 bg-surface-100 hidden sm:block" />
+                <div className="text-center">
+                  <p className="text-xs font-bold text-surface-400 uppercase mb-1">Quiz Accuracy</p>
+                  <p className="text-xl font-black text-emerald-600">88.4%</p>
+                </div>
+                <div className="w-px h-8 bg-surface-100 hidden sm:block" />
+                <div className="text-center">
+                  <p className="text-xs font-bold text-surface-400 uppercase mb-1">Time Spent</p>
+                  <p className="text-xl font-black text-primary-600">4.5 hrs</p>
+                </div>
+              </div>
+            </Card>
+          </motion.section>
+
+          {/* RECENT ASSESSMENTS */}
+          <motion.section variants={itemVariants}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                  <Trophy size={20} />
+                </div>
+                <h2 className="text-2xl font-black text-surface-900 tracking-tight">Recent Assessments</h2>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/quizzes")}>View All</Button>
+            </div>
+
+            <div className="space-y-4">
+              {recentQuizzes.length > 0 ? (
                 recentQuizzes.slice(0, 3).map((quiz) => (
-                  <div key={quiz.id} className="p-8 flex items-center justify-between hover:bg-slate-50/50 transition-all cursor-pointer group" onClick={() => navigate(`/dashboard/quizzes/result/${quiz.id}`)}>
-                    <div className="flex items-center gap-6">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
-                        <Trophy size={24} />
+                  <Card key={quiz.id} interactive className="p-6 group cursor-pointer" onClick={() => navigate(`/dashboard/quizzes/result/${quiz.id}`)}>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-2xl bg-surface-50 flex items-center justify-center text-surface-400 group-hover:bg-primary-600 group-hover:text-white transition-all transform group-hover:scale-110">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-surface-900 text-lg tracking-tight uppercase">{quiz.title}</h4>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-1"><Calendar size={12} /> {quiz.date}</span>
+                            <span className="w-px h-3 bg-surface-200" />
+                            <span className="text-[10px] font-bold text-surface-400 uppercase tracking-widest flex items-center gap-1"><Clock size={12} /> {quiz.duration}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-black text-slate-900 text-lg group-hover:text-primary-600 transition-colors uppercase tracking-tight">{quiz.title}</h4>
-                        <MetaText className="text-[10px] font-bold text-slate-400">{quiz.date} • {quiz.duration}</MetaText>
+                      <div className="flex items-center gap-6 w-full sm:w-auto justify-between">
+                        <div className="text-right">
+                          <div className="text-3xl font-black text-surface-900 tracking-tighter">{quiz.score}%</div>
+                          <Badge variant={quiz.status === 'Passed' ? 'success' : 'error'} size="sm" className="font-black tracking-widest text-[8px] uppercase">{quiz.status}</Badge>
+                        </div>
+                        <div className="w-10 h-10 rounded-full border border-surface-100 flex items-center justify-center group-hover:bg-primary-600 group-hover:text-white transition-all">
+                          <ArrowRight size={18} />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-8">
-                      <div className="text-right">
-                        <div className="text-2xl font-black text-slate-900 leading-none mb-1">{quiz.score}%</div>
-                        <Badge variant={quiz.status === 'Passed' ? 'success' : 'error'} size="sm" className="font-bold tracking-widest text-[9px] uppercase px-2">{quiz.status}</Badge>
-                      </div>
-                      <ArrowRight size={20} className="text-slate-200 group-hover:text-primary-600" />
-                    </div>
-                  </div>
+                  </Card>
                 ))
               ) : (
-                <div className="py-20 flex flex-col items-center justify-center">
-                  <EmptyState title="No quiz attempts" description="Your assessment history will be tracked here." icon={Target} />
-                </div>
+                <EmptyState title="No Assessments Yet" description="Your quiz results and progress insights will appear here once you take a test." icon={Target} />
               )}
             </div>
-          </Card>
+          </motion.section>
         </div>
 
-        {/* Right Column - Active Path */}
-        <div className="space-y-12">
-          <Card className="p-0 border-none shadow-premium overflow-hidden bg-white rounded-3xl">
-            <div className="p-10 bg-slate-900 text-white relative">
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                <BrainCircuit size={100} />
-              </div>
-              <div className="relative z-10">
-                <Label className="text-primary-400 block mb-3 uppercase tracking-widest font-black text-[10px]">Jump Back In</Label>
-                <h3 className="text-3xl font-black mb-1 leading-tight tracking-tight">{roadmap.title}</h3>
+        {/* 4. ASIDE CONTENT (Right) */}
+        <div className="space-y-10">
+          {/* ACTIVE ROADMAP PREVIEW */}
+          <motion.section variants={itemVariants}>
+            <Card variant="surface" className="p-0 rounded-4xl overflow-hidden group">
+              <div className="p-8 bg-slate-900 text-white relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                  <Rocket size={80} />
+                </div>
+                <Badge variant="primary" className="bg-primary-500/20 text-primary-400 border-none mb-4 uppercase text-[9px] tracking-widest font-black">Active Path</Badge>
+                <h3 className="text-2xl font-black mb-2 tracking-tight">{roadmap.title}</h3>
                 <p className="text-slate-400 text-sm font-medium">{roadmap.subtitle}</p>
               </div>
-            </div>
-            <div className="p-10">
-              <div className="mb-10 flex flex-col items-center">
-                <ProgressDonut data={charts.roadmapData} isLoading={isLoading} />
-                <Label className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Roadmap Progress</Label>
+              <div className="p-8">
+                <div className="space-y-4 mb-8">
+                  {roadmap.steps?.map((step, i) => (
+                    <div key={i} className="flex gap-4 items-start">
+                      <div className={`mt-1 w-6 h-6 shrink-0 rounded-full flex items-center justify-center ${step.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : step.status === 'active' ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-300'}`}>
+                        {step.status === 'completed' ? <CheckCircle2 size={14} /> : <div className="text-[10px] font-black">{i + 1}</div>}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold uppercase tracking-tight ${step.status === 'active' ? 'text-surface-900' : 'text-surface-400'}`}>{step.title}</p>
+                        <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest">{step.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Button fullWidth variant="primary" className="py-5" onClick={() => navigate('/dashboard/roadmap')}>
+                  Resume Chapter
+                </Button>
               </div>
+            </Card>
+          </motion.section>
 
-              <div className="space-y-4">
-                {roadmap.steps?.slice(0, 2).map((step, i) => (
-                  <div key={i} className="flex gap-4 p-5 rounded-2xl border border-slate-50 hover:border-primary-100 transition-all bg-slate-50/50">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-white shadow-sm text-primary-600'}`}>
-                      {step.status === 'completed' ? <CheckCircle2 size={18} /> : <Rocket size={18} />}
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className={`text-sm font-black truncate ${step.status === 'active' ? 'text-slate-900' : 'text-slate-400'}`}>{step.title}</p>
-                      <Badge variant={step.status === 'completed' ? 'success' : step.status === 'active' ? 'primary' : 'neutral'} size="sm" className="mt-2 text-[8px] font-black uppercase tracking-widest">
-                        {step.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+          {/* SMART RECOMMENDATIONS */}
+          <motion.section variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-primary-50 text-primary-600 rounded-xl">
+                <Sparkles size={20} />
               </div>
-              <Button fullWidth className="mt-10 py-5 font-black uppercase tracking-widest text-xs shadow-xl shadow-primary-600/10" onClick={() => navigate('/dashboard/roadmap')}>
-                CONTINUE PATH <ArrowRight size={18} className="ml-2" />
-              </Button>
+              <h2 className="text-xl font-black text-surface-900 tracking-tight">For You</h2>
             </div>
-          </Card>
+            <div className="space-y-4">
+              <Card variant="glass" interactive className="p-5 flex flex-col gap-3">
+                <Badge variant="secondary" className="w-fit text-[8px] tracking-widest font-black uppercase">Next Topic</Badge>
+                <h4 className="font-black text-surface-900 uppercase text-sm leading-tight">Advanced React Hooks Patterns</h4>
+                <p className="text-xs text-surface-500 font-medium">Deepen your mastery of state management and side effects.</p>
+                <Button variant="ghost" size="sm" className="w-fit p-0 h-auto text-primary-600 text-[10px] font-black">START EXPLORING <ArrowRight size={12} className="ml-1" /></Button>
+              </Card>
+
+              <Card variant="glass" interactive className="p-5 flex flex-col gap-3">
+                <Badge variant="accent" className="w-fit text-[8px] tracking-widest font-black uppercase">Skill Gap</Badge>
+                <h4 className="font-black text-surface-900 uppercase text-sm leading-tight">Data Structures Practice</h4>
+                <p className="text-xs text-surface-500 font-medium">Taking a quick practice test could improve your accuracy by 15%.</p>
+                <Button variant="ghost" size="sm" className="w-fit p-0 h-auto text-primary-600 text-[10px] font-black">TAKE PRACTICE <ArrowRight size={12} className="ml-1" /></Button>
+              </Card>
+            </div>
+          </motion.section>
+
+          {/* AI ADVISOR COMPACT */}
+          <motion.div variants={itemVariants}>
+            <LearningAdvisor compact />
+          </motion.div>
         </div>
       </div>
-    </Container>
+    </motion.div>
   );
 };
 

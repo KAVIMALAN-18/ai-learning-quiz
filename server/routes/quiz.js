@@ -8,6 +8,7 @@ const QuizAttempt = require('../models/QuizAttempt');
 const User = require('../models/User');
 
 const { callGemini } = require('../utils/ai');
+const { updateDailyProgress, updateStudentPerformance } = require('../utils/analyticsHelper');
 
 // Helper: generate questions using Gemini (expects GEMINI_API_KEY)
 async function generateQuestionsWithGemini({ topic, difficulty, count = 10, timeLimitPerQ }) {
@@ -173,6 +174,10 @@ router.post('/submit/:quizId', protect, async (req, res) => {
         }
       }
     }
+
+    // Update analytics
+    updateDailyProgress(req.user.id, { type: 'quiz' });
+    updateStudentPerformance(req.user.id);
 
     return res.json({ result: { score: result.score, answers: result.answers, attemptId: result.attempt._id } });
   } catch (err) {

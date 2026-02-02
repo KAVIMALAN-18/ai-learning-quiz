@@ -12,7 +12,7 @@ import {
     Filler,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import Card from './ui/Card';
+
 
 // Register ChartJS components
 ChartJS.register(

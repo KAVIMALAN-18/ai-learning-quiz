@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Roadmap = require("../models/Roadmap");
 
 const { callGemini } = require("../utils/ai");
+const { updateDailyProgress } = require("../utils/analyticsHelper");
 
 /**
  * Builds a structured prompt for the AI to generate a roadmap.
@@ -167,6 +168,11 @@ exports.updateStep = async (req, res) => {
 
     roadmap.steps[idx].completed = !!completed;
     await roadmap.save();
+
+    if (completed) {
+      // Background update - don't await/block response
+      updateDailyProgress(userId, { type: 'lesson' });
+    }
 
     return res.json({ roadmap });
   } catch (err) {

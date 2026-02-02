@@ -14,7 +14,15 @@ const analyticsService = {
         return response.data;
     },
     getStudyTime: async () => {
-        const response = await apiClient.get("/analytics/study-time");
+        const res = await apiClient.get("/analytics/study-time");
+        return res.data;
+    },
+    getDetailedPerformance: async () => {
+        const res = await apiClient.get("/analytics/detailed-performance");
+        return res.data;
+    },
+    getProgress: async () => {
+        const response = await apiClient.get("/analytics/progress");
         return response.data;
     }
 };

@@ -4,39 +4,75 @@
 
 @layer base {
   body {
-    @apply antialiased text-slate-900 bg-slate-50/50;
+    @apply antialiased text-surface-900 bg-surface-50 selection:bg-primary-500 selection:text-white overflow-x-hidden;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-200 rounded-full hover:bg-surface-300 transition-colors;
+  }
+}
+
+@layer components {
+
+  /* Glassmorphism Cards */
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-glass transition-all duration-300;
+  }
+
+  .glass-panel-dark {
+    @apply bg-surface-900/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+
+  /* Interaction States */
+  .interactive-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-premium active:scale-95;
+  }
+
+  /* Premium Gradients */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-secondary-600;
+  }
+
+  .bg-premium-gradient {
+    @apply bg-gradient-to-br from-primary-500 to-secondary-600;
   }
 }
 
 @layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
+  .bg-grid-mesh {
+    background-image: radial-gradient(at 0% 0%, hsla(253, 16%, 95%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsla(225, 39%, 90%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(339, 49%, 90%, 1) 0, transparent 50%);
   }
 
-  .animate-slide-up {
-    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  .shimmer-effect {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
   }
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
