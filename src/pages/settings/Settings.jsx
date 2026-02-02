@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Container from '../../components/ui/Container';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 
 // Mock user data with enhanced activity

@@ -19,7 +19,10 @@ import {
     Check,
     Rocket,
     Target,
-    ArrowRight
+    BrainCircuit,
+    ArrowRight,
+    X,
+    Search
 } from 'lucide-react';
 
 import courseService from '../../services/course.service';
@@ -458,4 +461,4 @@ export default function CoursePlayerPage() {
     );
 }
 
-import { Search } from 'lucide-react';
+

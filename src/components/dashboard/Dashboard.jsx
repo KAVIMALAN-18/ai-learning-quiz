@@ -25,7 +25,8 @@ import { Title, SectionHeader, BodyText, MetaText, Label } from "../ui/Typograph
 import Container from "../ui/Container";
 import Badge from "../ui/Badge";
 import Skeleton from "../ui/Skeleton";
-import { LoadingSpinner } from "../ui/LoadingSpinner";
+import LoadingSpinner from "../ui/LoadingSpinner";
+import EmptyState from "../ui/EmptyState";
 import PerformanceChart from '../analytics/PerformanceChart';
 import ProgressDonut from '../analytics/ProgressDonut';
 import LearningAdvisor from '../ai/LearningAdvisor';
