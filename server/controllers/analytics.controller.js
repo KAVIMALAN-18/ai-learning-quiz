@@ -300,7 +300,7 @@ exports.getDetailedPerformance = async (req, res) => {
 
         res.json(performance);
     } catch (err) {
-        console.error("Detailed Analytics Error:", err);
+        console.error("Detailed Analytic Error:", err);
         res.status(500).json({ message: err.messages });
     }
 };
