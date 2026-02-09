@@ -83,19 +83,11 @@ app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/roadmap", roadmapRoutes);
 app.use("/api/chat", chatRoutes);
 
-const jobRoutes = require("./routes/jobs");
-const recommendationRoutes = require("./routes/recommendations");
-const mentorRoutes = require("./routes/mentor");
 const adminRoutes = require("./routes/admin");
-const certificateRoutes = require("./routes/certificates");
 const profileRoutes = require("./routes/profile");
 
 app.use("/api/quiz", quizRoutes);
-app.use("/api/jobs", jobRoutes);
-app.use("/api/recommendations", recommendationRoutes);
-app.use("/api/mentor", mentorRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/certificates", certificateRoutes);
 app.use("/api/profile", profileRoutes);
 
 const dashboardRoutes = require("./routes/dashboard");
@@ -109,12 +101,6 @@ app.use("/api/courses", courseRoutes);
 
 const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);
-
-const careerRoutes = require("./routes/career.routes");
-app.use("/api/career", careerRoutes);
-
-const interviewRoutes = require("./routes/interview.routes");
-app.use("/api/interview", interviewRoutes);
 
 // Health checks
 app.get("/api/health", (req, res) => {
@@ -150,7 +136,7 @@ mongoose
 
     // Auto-seed if catalog is empty
     const Course = require('./models/Course');
-    const seedLearningSystem = require('./scripts/seedLearningSystem');
+    const seedLearningSystem = require('./scripts/course.seed');
 
     Course.countDocuments().then(count => {
       if (count === 0) {

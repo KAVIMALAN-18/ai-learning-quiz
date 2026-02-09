@@ -15,6 +15,8 @@ const QuizAttemptSchema = new mongoose.Schema({
   // legacy / alias
   answersGiven: { type: [AnswerSchema], default: [] },
   score: { type: Number, default: 0 },
+  totalQuestions: { type: Number, default: 0 },
+  percentage: { type: Number, default: 0 },
   status: { type: String, enum: ['ongoing', 'completed'], default: 'ongoing' },
   startedAt: { type: Date, default: Date.now },
   submittedAt: { type: Date },

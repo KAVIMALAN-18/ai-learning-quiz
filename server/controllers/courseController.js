@@ -47,7 +47,10 @@ exports.getCourseDetails = async (req, res) => {
         const { slug } = req.params;
         const userId = req.user.id;
 
-        const course = await Course.findOne({ slug })
+        const isObjectId = mongoose.Types.ObjectId.isValid(slug);
+        const query = isObjectId ? { _id: slug } : { slug };
+
+        const course = await Course.findOne(query)
             .populate({
                 path: 'modules',
                 options: { sort: { 'order': 1 } },

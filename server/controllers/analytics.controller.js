@@ -1,69 +1,46 @@
+/* DEBUG VERSION */
 const mongoose = require('mongoose');
+
 const QuizAttempt = require('../models/QuizAttempt');
 const Roadmap = require('../models/Roadmap');
 const User = require('../models/User');
 const DailyProgress = require('../models/DailyProgress');
 const StudentPerformance = require('../models/StudentPerformance');
 const Course = require('../models/Course');
+const StudySession = require('../models/StudySession');
+const Progress = require('../models/Progress');
 
 /* ==============================
    GET /api/analytics/overview
    ============================== */
 exports.getOverview = async (req, res) => {
-    console.log("🚀 [Analytics] getOverview requested by user:", req.user?.id);
     try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ message: "Not authorized" });
-        }
+        const userId = req.user.id;
 
-        console.log(`📊 Fetching analytics for user: ${userId}`);
-
-        // 1. Validate and Cast UserID for aggregation
-        let userObjectId;
-        try {
-            userObjectId = new mongoose.Types.ObjectId(userId);
-        } catch (e) {
-            console.error("❌ Invalid UserID for aggregation:", userId);
-            // If casting fails, we might still be able to use the string ID for non-aggregate queries
-            // but for aggregate we need the object. We'll fallback to dummy score.
-        }
-
-        // 1. Unified Quiz Stats & Streak
-        const [quizStats, roadmaps] = await Promise.all([
+        // Parallel data fetching for performance
+        const [quizStats, roadmaps, studySessions] = await Promise.all([
             QuizAttempt.aggregate([
-                { $match: { userId: userObjectId, status: 'completed' } },
+                { $match: { userId: new mongoose.Types.ObjectId(userId), status: 'completed' } },
                 {
-                    $facet: {
-                        overall: [
-                            { $group: { _id: null, total: { $sum: 1 }, avgScore: { $avg: '$score' } } }
-                        ],
-                        activity: [
-                            { $sort: { submittedAt: -1 } },
-                            { $limit: 100 }, // Look at last 100 entries for trend/activity
-                            {
-                                $group: {
-                                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$submittedAt" } },
-                                    count: { $sum: 1 }
-                                }
-                            }
-                        ],
-                        lastAttempt: [
-                            { $sort: { submittedAt: -1 } },
-                            { $limit: 1 },
-                            { $project: { submittedAt: 1 } }
-                        ]
+                    $group: {
+                        _id: null,
+                        totalQuizzes: { $sum: 1 },
+                        avgScore: { $avg: '$score' },
+                        avgPercentage: { $avg: '$percentage' }
                     }
                 }
             ]),
-            Roadmap.find({ userId })
+            Roadmap.find({ userId }).select('steps'),
+            StudySession.aggregate([
+                { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+                { $group: { _id: null, totalMinutes: { $sum: '$duration' } } }
+            ])
         ]);
 
-        const stats = quizStats[0].overall[0] || { total: 0, avgScore: 0 };
-        const totalQuizzes = stats.total;
-        const avgScore = Math.round(stats.avgScore || 0);
+        const stats = quizStats[0] || { totalQuizzes: 0, avgScore: 0, avgPercentage: 0 };
+        const totalMinutes = studySessions[0]?.totalMinutes || 0;
 
-        // 2. Roadmap Progress
+        // Roadmap Progress Calculation
         let totalSteps = 0;
         let completedSteps = 0;
         roadmaps.forEach(map => {
@@ -74,109 +51,124 @@ exports.getOverview = async (req, res) => {
         });
         const progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-        // 3. Streak Calculation (Simpler)
-        let streak = 0;
-        const lastActive = quizStats[0].lastAttempt[0]?.submittedAt;
-        if (lastActive) {
-            const diffDays = (new Date() - new Date(lastActive)) / (1000 * 60 * 60 * 24);
-            if (diffDays < 2) streak = 1; // Simplified streak check
-        }
+        // Streak Calculation
+        const streak = await calculateStreak(userId);
 
-        // 4. Map Activity Data (7 days)
-        const activityMap = {};
-        quizStats[0].activity.forEach(a => activityMap[a._id] = a.count);
-
-        const activityData = [];
-        const today = new Date();
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            activityData.push(Math.min((activityMap[dateStr] || 0) * 20, 100));
-        }
+        // Activity Data (Last 7 Days)
+        const activityData = await getActivityData(userId);
 
         res.json({
-            totalQuizzes,
-            avgScore,
+            totalQuizzes: stats.totalQuizzes,
+            avgScore: Math.round(stats.avgScore),
+            avgPercentage: Math.round(stats.avgPercentage),
             progressPercent,
             streak,
             completedSteps,
             totalSteps,
-            completedCourses: roadmaps.length,
-            hoursSpent: 0,
+            completedCourses: roadmaps.length, // Or count completed roadmaps
+            hoursSpent: Math.round(totalMinutes / 60 * 10) / 10,
             activityData
         });
 
     } catch (err) {
-        console.error('🔥 Critical Analytics Error:', err);
-        res.status(500).json({
-            message: 'Server Error',
-            details: err.message,
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        });
+        console.error('Analytics Overview Error:', err);
+        res.status(500).json({ message: 'Server Error', error: err.message });
     }
 };
 
+// Helpers
+async function calculateStreak(userId) {
+    try {
+        const history = await DailyProgress.find({ userId }).sort({ date: -1 });
+        if (history.length === 0) return 0;
+
+        let streak = 0;
+        let currentDate = new Date();
+        currentDate.setHours(0, 0, 0, 0);
+
+        for (const record of history) {
+            const recordDate = new Date(record.date);
+            recordDate.setHours(0, 0, 0, 0);
+
+            // Check if record is today or consecutive day
+            const diffTime = Math.abs(currentDate - recordDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 1) {
+                streak++;
+                currentDate = recordDate;
+            } else {
+                break;
+            }
+        }
+        return streak;
+    } catch (err) {
+        console.error('Streak calculation error:', err);
+        return 0;
+    }
+}
+
+async function getActivityData(userId) {
+    try {
+        const last7Days = new Date();
+        last7Days.setDate(last7Days.getDate() - 7);
+        last7Days.setHours(0, 0, 0, 0);
+
+        const activities = await DailyProgress.find({
+            userId,
+            date: { $gte: last7Days }
+        }).sort({ date: 1 });
+
+        return activities.map(a => ({
+            date: a.date,
+            lessons: a.lessonsCompleted || 0,
+            quizzes: a.quizzesTaken || 0,
+            percentage: a.completionPercentage || 0
+        }));
+    } catch (err) {
+        console.error('Activity data fetch error:', err);
+        return [];
+    }
+}
 /* ==============================
-   GET /api/analytics/quiz-performance
+   GET /api/analytics/quizzes (Recent Results)
    ============================== */
 exports.getQuizPerformance = async (req, res) => {
     try {
         const userId = req.user.id;
+        // Fetch last 10 completed quizzes
         const attempts = await QuizAttempt.find({ userId, status: 'completed' })
-            .sort({ submittedAt: 1 })
+            .sort({ submittedAt: -1 })
             .limit(10)
-            .select('submittedAt score')
+            .populate('quizId', 'title topic') // Populate quiz details if needed
             .lean();
 
-        const data = attempts.map((a, i) => ({
-            label: a.submittedAt.toLocaleDateString(),
-            score: a.score
-        }));
+        // Format for frontend
+        const data = attempts.map(a => ({
+            id: a._id,
+            quizTitle: a.quizId?.title || 'Unknown Quiz',
+            topic: a.quizId?.topic || 'General',
+            date: a.submittedAt,
+            score: a.score,
+            totalQuestions: a.totalQuestions || 0, // Fallback if using old data
+            percentage: a.percentage !== undefined ? a.percentage : (a.totalQuestions ? Math.round((a.score / a.totalQuestions) * 100) : 0),
+            timeTaken: a.timeTaken
+        })).reverse(); // Show oldest to newest for charts? Or handle in frontend. Usually charts need chronological.
 
         res.json(data);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Quiz Performance Error:', err);
+        res.status(500).json({ message: 'Server Error' });
     }
 };
 
 /* ==============================
-   GET /api/analytics/progress (Daily Completion %)
-   ============================== */
-exports.getProgress = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-        const progress = await DailyProgress.find({
-            userId,
-            date: { $gte: last30Days }
-        }).sort({ date: 1 }).lean();
-
-        // Fill in missing days with 0 (or previous value? 0 is safer for daily activity)
-        // If "Completion %" is cumulative, we should take the last knonwn.
-        // If it's "Daily Efficiency", it's distinct.
-        // User asked "How user improves daily/weekly". This implies cumulative or trend.
-        // Let's return the raw daily snapshots.
-
-        const data = progress.map(p => ({
-            date: p.date.toLocaleDateString(),
-            value: p.completionPercentage || 0
-        }));
-
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-/* ==============================
-   GET /api/analytics/topic-accuracy
+   GET /api/analytics/mastery (Topic Mastery)
    ============================== */
 exports.getTopicAccuracy = async (req, res) => {
     try {
         const userId = new mongoose.Types.ObjectId(req.user.id);
-        const data = await QuizAttempt.aggregate([
+        const mastery = await QuizAttempt.aggregate([
             { $match: { userId, status: 'completed' } },
             {
                 $lookup: {
@@ -190,20 +182,24 @@ exports.getTopicAccuracy = async (req, res) => {
             {
                 $group: {
                     _id: '$quiz.topic',
-                    avgScore: { $avg: '$score' }
+                    avgPercentage: { $avg: '$percentage' },
+                    attempts: { $sum: 1 }
                 }
             },
             {
                 $project: {
                     topic: '$_id',
-                    accuracy: { $round: ['$avgScore', 1] }
+                    accuracy: { $round: ['$avgPercentage', 1] },
+                    attempts: 1
                 }
-            }
+            },
+            { $sort: { accuracy: -1 } }
         ]);
 
-        res.json(data);
+        res.json(mastery);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Topic Mastery Error:', err);
+        res.status(500).json({ message: 'Server Error' });
     }
 };
 
@@ -213,94 +209,154 @@ exports.getTopicAccuracy = async (req, res) => {
 exports.getRoadmapProgress = async (req, res) => {
     try {
         const userId = req.user.id;
-        const roadmaps = await Roadmap.find({ userId }).lean();
+        const roadmaps = await Roadmap.find({ userId }).select('steps');
 
-        let completed = 0;
-        let pending = 0;
-
-        roadmaps.forEach(r => {
-            r.steps.forEach(s => {
-                if (s.completed) completed++;
-                else pending++;
-            });
+        let totalSteps = 0;
+        let completedSteps = 0;
+        roadmaps.forEach(map => {
+            if (map.steps) {
+                totalSteps += map.steps.length;
+                completedSteps += map.steps.filter(s => s.completed).length;
+            }
         });
+        const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-        res.json([
-            { name: 'Completed', value: completed },
-            { name: 'Pending', value: pending }
-        ]);
+        res.json({ progress });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Roadmap Progress Error:', err);
+        res.status(500).json({ message: 'Server Error' });
     }
 };
-
 /* ==============================
    GET /api/analytics/study-time
    ============================== */
 exports.getStudyTime = async (req, res) => {
     try {
-        const userId = req.user.id;
-        const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const userId = new mongoose.Types.ObjectId(req.user.id);
+        const last7Days = new Date();
+        last7Days.setDate(last7Days.getDate() - 7);
 
-        const attempts = await QuizAttempt.find({
-            userId,
-            submittedAt: { $gte: last7Days },
-            status: 'completed'
-        }).select('submittedAt timeTaken').lean();
+        // Aggregate Study Sessions
+        const studyStats = await StudySession.aggregate([
+            { $match: { userId, date: { $gte: last7Days } } },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                    totalMinutes: { $sum: "$duration" }
+                }
+            }
+        ]);
 
-        // Group by day of week
+        // Transform to 7-day array
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const activity = Array(7).fill(0).map((_, i) => {
+        const activity = [];
+
+        for (let i = 6; i >= 0; i--) {
             const d = new Date();
-            d.setDate(d.getDate() - (6 - i));
-            return { day: days[d.getDay()], hours: 0, date: d.toDateString() };
-        });
-
-        attempts.forEach(a => {
-            const dayStr = new Date(a.submittedAt).toDateString();
-            const slot = activity.find(s => s.date === dayStr);
-            if (slot) slot.hours += (a.timeTaken || 0) / 3600; // convert seconds to hours
-        });
-
-        res.json(activity.map(a => ({ day: a.day, hours: Number(a.hours.toFixed(2)) })));
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-/* ==============================
-   GET /api/analytics/detailed-performance
-   ============================== */
-exports.getDetailedPerformance = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        let performance = await StudentPerformance.findOne({ userId });
-
-        if (!performance) {
-            // Lazy update if record doesn't exist but user has activity
-            const { updateStudentPerformance } = require('../utils/analyticsHelper');
-            await updateStudentPerformance(userId);
-            performance = await StudentPerformance.findOne({ userId });
-        }
-
-        if (!performance) {
-            return res.json({
-                overallStats: {
-                    totalQuizzesTaken: 0,
-                    averageScore: 0,
-                    overallAccuracy: 0,
-                    totalTimeSpent: 0,
-                    completionPercentage: 0
-                },
-                coursePerformance: [],
-                topicMastery: [],
-                performanceHistory: [],
-                suggestions: ["Start your first quiz to see your performance metrics here!"]
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const stat = studyStats.find(s => s._id === dateStr);
+            activity.push({
+                day: days[d.getDay()],
+                hours: stat ? Number((stat.totalMinutes / 60).toFixed(2)) : 0,
+                date: dateStr
             });
         }
 
-        res.json(performance);
+        res.json(activity);
     } catch (err) {
-        console.error("Detailed Analytic Error:", err);
-        res.status(500).json({ message: err.messages });
+        console.error('Study Time Error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+/* ==============================
+   GET /api/analytics/progress (Study Progress)
+   ============================== */
+exports.getProgress = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        // Fetch progress records
+        const progress = await Progress.find({ userId }).sort({ lastUpdated: -1 });
+        res.json(progress);
+    } catch (err) {
+        console.error('Progress Error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+/* ==============================
+   POST /api/analytics/session
+   ============================== */
+exports.saveStudySession = async (req, res) => {
+    try {
+        const { topic, duration } = req.body;
+        if (!topic || !duration) {
+            return res.status(400).json({ message: 'Topic and duration are required' });
+        }
+
+        const session = await StudySession.create({
+            userId: req.user.id,
+            topic,
+            duration: Number(duration),
+            date: new Date()
+        });
+
+        res.status(201).json(session);
+    } catch (err) {
+        console.error('Save Session Error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+/* ==============================
+   POST /api/analytics/quiz-result
+   ============================== */
+exports.saveQuizResult = async (req, res) => {
+    try {
+        const { quizId, score, totalQuestions, timeTaken } = req.body;
+
+        // Calculate percentage
+        const percentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+
+        // Create or update quiz attempt
+        // Note: Usually quiz submission logic is in quiz.controller.js.
+        // This endpoint might be used if the frontend calculates the score locally or for external quizzes.
+        // Assuming we are saving a NEW attempt here.
+
+        const attempt = await QuizAttempt.create({
+            userId: req.user.id,
+            quizId,
+            score,
+            totalQuestions,
+            percentage,
+            timeTaken,
+            status: 'completed',
+            submittedAt: new Date()
+        });
+
+        // Update Progress (Optional: Update course progress if linked)
+        // ...
+
+        res.status(201).json(attempt);
+    } catch (err) {
+        console.error('Save Quiz Result Error:', err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+/* ==============================
+   GET /api/analytics/detailed-performance (Legacy/Aggregated)
+   ============================== */
+exports.getDetailedPerformance = async (req, res) => {
+    // Re-using getOverview logic or returning aggregated structure for frontend compatibility
+    // For now, let's redirect to getOverview or construct a similar object
+    try {
+        // Reuse the logic from getOverview to construct the 'StudentPerformance' shape the frontend expects
+        // Or simpler: Just return what getOverview returns and update frontend to use that.
+        // But to keep frontend changes minimal in this step, let's shape it.
+
+        // ... (We can refactor this later, for now let's rely on individual endpoints)
+        res.status(410).json({ message: "Endpoint deprecated. Use specific analytics endpoints." });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
 };

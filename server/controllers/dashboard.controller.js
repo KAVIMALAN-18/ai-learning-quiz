@@ -34,12 +34,31 @@ exports.getDashboardOverview = async (req, res) => {
             name: user.name,
             level: user.level,
             goals: user.goals,
-            completedQuizzes,
+            completedCourses: 0, // Placeholder for now
+            totalQuizzes: completedQuizzes,
+            avgScore: 0, // Should be calculated
+            streak: 0,   // Should be calculated
             roadmapProgress: progressPercent,
             lastActivity,
         });
     } catch (err) {
         console.error('Dashboard overview error:', err);
         res.status(500).json({ message: 'Failed to load dashboard data' });
+    }
+};
+
+/**
+ * GET /api/dashboard/roadmap/:topic
+ * Bridging to roadmap controller or serving existing roadmap
+ */
+exports.getRoadmapByTopic = async (req, res) => {
+    try {
+        const { topic } = req.params;
+        const roadmapController = require('./roadmapController');
+        // Re-use existing getRoadmap logic but normalize params
+        req.query.topic = topic;
+        return roadmapController.getRoadmap(req, res);
+    } catch (err) {
+        res.status(500).json({ message: "Roadmap bridge failed" });
     }
 };

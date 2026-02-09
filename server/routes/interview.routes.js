@@ -1,9 +1,0 @@
-const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
-const { startInterview, submitAnswer } = require('../controllers/interviewController');
-
-router.post('/start', protect, startInterview);
-router.post('/submit', protect, submitAnswer);
-
-module.exports = router;

@@ -9,6 +9,8 @@ const {
     getRoadmapProgress,
     getStudyTime,
     getProgress,
+    saveStudySession,
+    saveQuizResult,
     getDetailedPerformance
 } = require("../controllers/analytics.controller");
 
@@ -24,5 +26,9 @@ router.get("/topic-accuracy", protect, getTopicAccuracy);
 router.get("/roadmap-progress", protect, getRoadmapProgress);
 router.get("/study-time", protect, getStudyTime);
 router.get("/progress", protect, getProgress);
+
+// POST Data
+router.post("/session", protect, saveStudySession);
+router.post("/quiz-result", protect, saveQuizResult);
 
 module.exports = router;

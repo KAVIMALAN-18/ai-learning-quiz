@@ -14,6 +14,11 @@ const QuestionSchema = new mongoose.Schema({
   timeLimit: { type: Number, default: 60 }, // seconds
   marks: { type: Number, default: 1 },
   difficulty: { type: Number, default: 1 }, // 1 to 5, for adaptive testing
+  testCases: [{
+    input: String,
+    expectedOutput: String,
+    isHidden: { type: Boolean, default: false }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Question', QuestionSchema);
